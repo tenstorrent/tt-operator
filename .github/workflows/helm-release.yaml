@@ -1,0 +1,60 @@
+name: Release Helm Chart
+
+on:
+  pull_request:
+    paths:
+      - charts/**
+  push:
+    branches:
+      - main
+    paths:
+      - charts/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Build dependencies
+        run: helm dependency build charts/tt-operator
+
+      - name: Lint
+        run: helm lint charts/tt-operator
+
+  publish:
+    needs: lint
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Build dependencies
+        run: helm dependency build charts/tt-operator
+
+      - name: Extract chart version
+        id: chart
+        run: |
+          VERSION=$(grep '^version:' charts/tt-operator/Chart.yaml | awk '{print $2}')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Package and push
+        run: |
+          helm package charts/tt-operator --destination /tmp/helm-packages
+          helm push \
+            /tmp/helm-packages/tt-operator-${{ steps.chart.outputs.version }}.tgz \
+            oci://ghcr.io/${{ github.repository_owner }}/helm-charts
