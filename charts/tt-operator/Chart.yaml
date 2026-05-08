@@ -1,0 +1,11 @@
+apiVersion: v2
+name: tt-operator
+description: Automates installation and lifecycle of software components required to run Tenstorrent workloads in a Kubernetes cluster
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: node-feature-discovery
+    version: "0.18.3"
+    repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
+    condition: node-feature-discovery.enabled
