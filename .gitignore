@@ -1,0 +1,2 @@
+# Helm dependency archives — run: helm dependency build charts/tt-operator
+charts/**/charts/*.tgz
