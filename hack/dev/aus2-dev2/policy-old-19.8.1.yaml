@@ -1,0 +1,17 @@
+# First test: flash v19.8.1 (older stable) on a SINGLE worker node so we
+# can validate end-to-end before scaling out. Controller pod is on e01cs02,
+# so we target e01cs03 to keep observability if anything is disruptive.
+apiVersion: firmware.tenstorrent.com/v1alpha1
+kind: TenstorrentFirmwarePolicy
+metadata:
+  name: aus2-dev2-test
+spec:
+  version: "19.8.1"
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: e01cs03
+  upgradePolicy:
+    maxParallel: 1
+    flashTimeoutSeconds: 900
+    drain:
+      enable: false
