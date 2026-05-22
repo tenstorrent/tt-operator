@@ -27,6 +27,48 @@ tt-k8s-driver-manager:
   controller:
     image: ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:dev
   driver:
-    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-installer:dev
+    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:dev
   flasher:
     image: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:dev
+
+# Tenstorrent Fabric Manager — per-node agent + cluster controller for
+# multi-card / multi-host fabric topology. Required for the DRA driver
+# (its kubelet plugin queries the per-node agent over gRPC). Standalone
+# value: provides topology-aware scheduling hints. Disabled by default
+# because aus2-dev2 single-host clusters don't need it; bump
+# tt-fabric-manager.enabled=true on multi-host fleets.
+tt-fabric-manager:
+  enabled: false
+  # ttfm's chart pulls a placeholder secret name from upstream values
+  # (`jlakistt`). Override with the cluster's ghcr-pull secret so the
+  # images can pull without manual secret-creation per namespace.
+  imagePullSecrets:
+    - name: ghcr-pull
+
+# tt-dra-driver — Dynamic Resource Allocation driver for Tenstorrent
+# devices. Requires Kubernetes 1.33+ and tt-fabric-manager. Set both
+# tt-dra-driver.enabled=true AND tt-fabric-manager.enabled=true to
+# turn on; the DRA kubelet plugin needs TTFM's agent service to do
+# device discovery.
+#
+# NOTE: the chart dep entry in Chart.yaml is currently commented out
+# because tt-dra-driver hasn't published a release version to
+# oci://ghcr.io/tenstorrent/helm/ yet. Block applies once the upstream
+# repo ships its first chart release. Values stay here as a forward-
+# compatible template.
+tt-dra-driver:
+  enabled: false
+  imagePullSecrets:
+    - name: ghcr-pull
+  image:
+    repository: ghcr.io/tenstorrent/tt-dra-driver
+    # Chart's default tracks chart's appVersion; pin explicitly to a
+    # known-good tag rather than `latest`.
+    tag: ""
+  kubeletPlugin:
+    # The DRA plugin reaches its node-local TTFM agent via a Service
+    # with internalTrafficPolicy=Local. The upstream chart's default
+    # name assumes ttfm is installed as release `ttfm` in namespace
+    # `ttfm`. When installed via this umbrella, the subchart's release
+    # name becomes `<umbrella>-tt-fabric-manager` — adjust as needed.
+    fabricManagerAgentAddress: "tt-operator-tt-fabric-manager-agent.tt-operator-system.svc.cluster.local:50053"

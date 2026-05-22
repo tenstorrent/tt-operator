@@ -9,7 +9,13 @@
       "Bash(git *)",
       "Bash(gh pr *)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.seldon.io)",
+      "WebFetch(domain:docs.ray.io)",
+      "WebFetch(domain:llm-d.ai)",
+      "WebFetch(domain:docs.nvidia.com)",
+      "WebFetch(domain:kserve.github.io)",
+      "Bash(gh repo *)"
     ]
   }
 }

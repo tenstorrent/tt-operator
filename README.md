@@ -1,15 +1,23 @@
 # tt-operator
 
-Umbrella Helm chart for running Tenstorrent workloads on Kubernetes. Installs:
+Umbrella Helm chart for running Tenstorrent workloads on Kubernetes.
+Pulls in four subcharts, each opt-in or opt-out via a `<name>.enabled`
+toggle in `values.yaml`:
 
-- **node-feature-discovery** — stamps `feature.node.kubernetes.io/pci-1200_1e52.present=true`
-  on every node that has a Tenstorrent PCI device.
-- **[tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager)** —
-  controllers, CRDs, and images that own the lifecycle of `tt-kmd`,
-  device firmware, and `tt-smi` on each node.
+| Subchart | Default | What it does |
+|---|---|---|
+| [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) | enabled | Stamps `feature.node.kubernetes.io/pci-1200_1e52.present=true` on Tenstorrent nodes. |
+| [tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager) | enabled | Controllers + CRDs + images for tt-kmd, device firmware, and tt-smi lifecycle. |
+| [tt-fabric-manager](https://github.com/tenstorrent/tt-fabric-manager) | **disabled** | Per-node agent + cluster controller for multi-card / multi-host fabric topology. Required by tt-dra-driver. |
+| [tt-dra-driver](https://github.com/tenstorrent/tt-dra-driver) | **disabled, staged**\* | Dynamic Resource Allocation driver advertising Tenstorrent ASICs through the k8s 1.33+ DRA API. |
 
-The controllers and per-node images live in `tt-k8s-driver-manager`; this
-repo is just the deployment surface.
+\* The DRA chart dep is commented out in `Chart.yaml` until upstream
+publishes a release to `oci://ghcr.io/tenstorrent/helm/`; the values
+block in `values.yaml` is ready, so enabling it once the chart ships
+is a two-line uncomment + bump.
+
+This repo is just the deployment surface — every controller, image,
+and CRD lives in the upstream subchart repos.
 
 ## Install
 

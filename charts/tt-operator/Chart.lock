@@ -1,0 +1,12 @@
+dependencies:
+- name: node-feature-discovery
+  repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+  version: 0.18.3
+- name: tt-k8s-driver-manager
+  repository: oci://ghcr.io/tenstorrent/helm-charts
+  version: 0.3.0
+- name: ttfm
+  repository: oci://ghcr.io/tenstorrent/ttfm-helm
+  version: 0.2.26
+digest: sha256:19f36a315a0f62e0b359311b21596e6a13dc7627b8ac967a58d3e4ba92bc1b5c
+generated: "2026-05-22T10:21:58.632145-05:00"
