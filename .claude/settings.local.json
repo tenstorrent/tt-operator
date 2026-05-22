@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm version *)",
+      "Bash(helm search *)",
+      "Bash(helm repo *)",
+      "Bash(helm dependency *)",
+      "Bash(helm lint *)",
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

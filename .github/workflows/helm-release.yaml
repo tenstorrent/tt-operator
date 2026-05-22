@@ -23,6 +23,19 @@ jobs:
 
       - uses: azure/setup-helm@v4
 
+      # helm dependency build pulls one HTTP repo (NFD) and one OCI repo
+      # (tenstorrent/helm-charts for tt-k8s-driver-manager). HTTP repos need
+      # to be registered first; OCI repos are used directly.
+      - name: Register chart dependency repos
+        run: |
+          helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+          helm repo update
+
+      - name: Log in to GHCR (for OCI subchart pulls)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
       - name: Build dependencies
         run: helm dependency build charts/tt-operator
 
@@ -38,6 +51,16 @@ jobs:
 
       - uses: azure/setup-helm@v4
 
+      - name: Register chart dependency repos
+        run: |
+          helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+          helm repo update
+
+      - name: Log in to GHCR (for OCI subchart pulls + chart push)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
       - name: Build dependencies
         run: helm dependency build charts/tt-operator
 
@@ -46,11 +69,6 @@ jobs:
         run: |
           VERSION=$(grep '^version:' charts/tt-operator/Chart.yaml | awk '{print $2}')
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Package and push
         run: |
