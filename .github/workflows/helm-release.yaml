@@ -47,10 +47,13 @@ jobs:
           helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
           helm repo update
 
+      # See TODO at top of this file — using GHCR_PULL_PAT instead of
+      # GITHUB_TOKEN until proper cross-repo access is granted on the four
+      # driver-manager packages. Mirrors ci.yaml's pattern.
       - name: Log in to GHCR (for OCI subchart pulls)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GHCR_PULL_PAT }}" | \
+            helm registry login ghcr.io --username kluongTT --password-stdin
 
       - name: Build dependencies
         run: helm dependency build charts/tt-operator
