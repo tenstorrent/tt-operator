@@ -1,0 +1,43 @@
+name: ci
+
+# tt-operator is an umbrella chart now (no Go code). CI lints + renders
+# the chart. The actual controllers live in tt-k8s-driver-manager and
+# have their own CI.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+
+      # tt-k8s-driver-manager (and any other tenstorrent OCI subchart) is a
+      # private GHCR package, so `helm dep build` returns 401 without
+      # auth. GITHUB_TOKEN with packages:read (granted above) is enough
+      # for cross-repo pulls within the same org.
+      - name: Log in to GHCR (for OCI subchart pulls)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Register chart dependency repos
+        run: |
+          helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+          helm repo update
+
+      - name: Helm lint
+        run: |
+          helm dependency build charts/tt-operator
+          helm lint charts/tt-operator
+
+      - name: Helm template render
+        run: helm template charts/tt-operator > /tmp/rendered.yaml
