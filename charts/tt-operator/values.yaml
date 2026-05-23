@@ -3,8 +3,10 @@
 #     feature.node.kubernetes.io/pci-1200_1e52.present label)
 #   - tt-k8s-driver-manager (controllers + CRDs + images for tt-kmd, firmware,
 #     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
+#   - tt-fabric-manager (opt-in; cluster fabric/interconnect manager — see
+#     github.com/tenstorrent/tt-fabric-manager)
 #
-# Everything below is wired into one of the two subcharts.
+# Everything below is wired into one of the subcharts.
 
 node-feature-discovery:
   enabled: true
@@ -37,3 +39,18 @@ tt-k8s-driver-manager:
     image: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:latest
   flasher:
     image: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:latest
+
+# tt-fabric-manager (TTFM) owns inter-card / inter-host fabric topology and
+# exposes a GetTopology gRPC consumed by downstream allocators (e.g.
+# tt-dra-driver). Opt-in because most single-node / non-Galaxy setups
+# don't need it.
+#
+# Before setting enabled: true, an admin should plan to override at least:
+#   - imagePullSecrets: point at the GHCR pull secret available in your
+#     cluster.
+#   - fabric_manager_config.groups: list your cluster's actual node
+#     hostnames; the agents won't match otherwise.
+#   - ingress.enabled / ingress.host: review whether ingress fits your
+#     environment, and retarget the hostname if so.
+tt-fabric-manager:
+  enabled: false
