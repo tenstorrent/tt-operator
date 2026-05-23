@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tt-operator
-description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling and tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle.
+description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, and optionally tt-fabric-manager for cluster fabric/interconnect management.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
@@ -13,3 +13,14 @@ dependencies:
     version: "0.1.0"
     repository: "oci://ghcr.io/tenstorrent/helm-charts"
     condition: tt-k8s-driver-manager.enabled
+  # Tenstorrent Fabric Manager (TTFM): per-node agent + cluster controller
+  # owning inter-card / inter-host fabric topology. Opt-in; most single-node
+  # / non-Galaxy setups don't need it. Aliased to `tt-fabric-manager` so
+  # values keys + rendered resources use the descriptive name instead of
+  # the short upstream chart name `ttfm`.
+  # Source: github.com/tenstorrent/tt-fabric-manager
+  - name: ttfm
+    alias: tt-fabric-manager
+    version: "0.2.26"
+    repository: "oci://ghcr.io/tenstorrent/ttfm-helm"
+    condition: tt-fabric-manager.enabled
