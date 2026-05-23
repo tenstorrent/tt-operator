@@ -1,0 +1,43 @@
+# Synthetic workload that holds /dev/tenstorrent open on e01cs03 — used to
+# validate drain behavior. Re-applies the device mount as a hostPath so
+# the operator's drain logic identifies it as a "device-using pod" and
+# tries to evict it before flashing.
+#
+# Deployment + Pod (not a bare pod) so the eviction API will accept it
+# without spec.drain.force=true. The Deployment will try to reschedule
+# the replacement, but the node is cordoned during the flash so it stays
+# Pending until uncordon — exactly what we want to observe.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tt-workload-sample
+  namespace: default
+  labels:
+    app: tt-workload-sample
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tt-workload-sample
+  template:
+    metadata:
+      labels:
+        app: tt-workload-sample
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: e01cs03
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sh", "-c", "exec sleep 99999"]
+          volumeMounts:
+            - name: tt
+              mountPath: /dev/tenstorrent
+          securityContext:
+            privileged: true
+      volumes:
+        - name: tt
+          hostPath:
+            path: /dev/tenstorrent
