@@ -1,0 +1,48 @@
+# Run once after `kind-up`: stamps NFD's native PCI-presence label on every
+# worker so the controller will reconcile them. Equivalent to having NFD
+# detect a real Tenstorrent PCI device — but without the hardware.
+# Label format matches what `feature.node.kubernetes.io/pci-<class>_<vendor>.present`
+# would be for a real Tenstorrent card.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mock-nfd-labeler
+  namespace: tt-operator-system
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: mock-nfd-labeler
+      containers:
+        - name: labeler
+          image: bitnami/kubectl:latest
+          command:
+            - sh
+            - -c
+            - |
+              for n in $(kubectl get nodes -o name); do
+                kubectl label "$n" feature.node.kubernetes.io/pci-1200_1e52.present=true --overwrite
+              done
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mock-nfd-labeler
+  namespace: tt-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mock-nfd-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mock-nfd-labeler
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: mock-nfd-labeler }
+subjects:
+  - { kind: ServiceAccount, name: mock-nfd-labeler, namespace: tt-operator-system }

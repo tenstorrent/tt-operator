@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tt-operator
-description: Automates installation and lifecycle of software components required to run Tenstorrent workloads in a Kubernetes cluster
+description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling and tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
@@ -9,3 +9,7 @@ dependencies:
     version: "0.18.3"
     repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
     condition: node-feature-discovery.enabled
+  - name: tt-k8s-driver-manager
+    version: "0.1.0"
+    repository: "oci://ghcr.io/tenstorrent/helm-charts"
+    condition: tt-k8s-driver-manager.enabled

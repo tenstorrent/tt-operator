@@ -1,2 +1,5 @@
 # Helm dependency archives — run: helm dependency build charts/tt-operator
 charts/**/charts/*.tgz
+
+# Local Claude Code permission allow-list — user-specific tooling state
+.claude/

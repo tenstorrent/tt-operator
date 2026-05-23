@@ -1,2 +1,39 @@
+# tt-operator is an umbrella chart. It installs:
+#   - node-feature-discovery (so Tenstorrent nodes get the
+#     feature.node.kubernetes.io/pci-1200_1e52.present label)
+#   - tt-k8s-driver-manager (controllers + CRDs + images for tt-kmd, firmware,
+#     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
+#
+# Everything below is wired into one of the two subcharts.
+
 node-feature-discovery:
   enabled: true
+  # Restrict NFD to the PCI source only. All we need is the
+  # pci-<class>_<vendor>.present label for Tenstorrent devices — running
+  # the full set (cpu, memory, kernel, system, storage, network, usb, custom)
+  # costs CPU/memory on every node and clutters node labels.
+  worker:
+    config:
+      core:
+        featureSources: ["pci"]
+        labelSources:   ["pci"]
+
+# tt-k8s-driver-manager owns the controllers, CRDs, and per-node images that
+# manage tt-kmd installation, firmware flashing, and tt-smi userspace.
+# Set tt-k8s-driver-manager.enabled=false to opt out (e.g. if you only want
+# NFD labelling and intend to manage drivers some other way).
+tt-k8s-driver-manager:
+  enabled: true
+  # Image tags track the driver-manager :latest published from main.
+  # Switch to :0.1.0 once a v0.1.0 git tag is cut on tt-k8s-driver-manager
+  # (the images workflow only produces semver tags from git tags, not from
+  # chart-version reads).
+  controller:
+    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:latest
+  # `driver.image` is the per-node builder image (clones tt-kmd, builds
+  # against host kernel headers, insmods). Pre-pivot name was -installer;
+  # the abandoned :dev tag of that older image is also gone.
+  driver:
+    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:latest
+  flasher:
+    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:latest
