@@ -43,18 +43,14 @@ tt-k8s-driver-manager:
 # tt-fabric-manager (TTFM) owns inter-card / inter-host fabric topology and
 # exposes a GetTopology gRPC consumed by downstream allocators (e.g.
 # tt-dra-driver). Opt-in because most single-node / non-Galaxy setups
-# don't need it; flipping enabled: true alone is NOT sufficient — see
-# notes below before enabling.
+# don't need it.
 #
 # Before setting enabled: true, an admin should plan to override at least:
-#   - imagePullSecrets: upstream chart defaults to a placeholder
-#     `jlakistt` secret that doesn't exist; point this at your real GHCR
-#     pull secret (e.g. `ghcr-pull`).
-#   - fabric_manager_config.groups: upstream ships a hardcoded host list
-#     (metal-wh-13..16); replace with your cluster's actual node
-#     hostnames or the agents won't match.
-#   - ingress.enabled / ingress.host: upstream defaults to enabled=true
-#     with a tenstorrent-internal hostname. Disable or retarget for
-#     anything outside that environment.
+#   - imagePullSecrets: point at the GHCR pull secret available in your
+#     cluster.
+#   - fabric_manager_config.groups: list your cluster's actual node
+#     hostnames; the agents won't match otherwise.
+#   - ingress.enabled / ingress.host: review whether ingress fits your
+#     environment, and retarget the hostname if so.
 tt-fabric-manager:
   enabled: false
