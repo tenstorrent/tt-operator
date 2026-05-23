@@ -1,5 +1,21 @@
 name: Release Helm Chart
 
+# TODO (cross-repo OCI auth): the `helm dependency build` steps below pull
+# the tt-k8s-driver-manager subchart, which is a GHCR package linked to
+# the tt-k8s-driver-manager repo. tt-operator's GITHUB_TOKEN does NOT have
+# auto-grant read access on it — same problem ci.yaml works around with
+# GHCR_PULL_PAT. This workflow currently still uses GITHUB_TOKEN because
+# it only runs on push-to-main / workflow_dispatch and hasn't run yet.
+# Before merging this branch to main, EITHER:
+#   1. Get an org admin to grant tt-operator read access on the 4 driver-
+#      manager packages (preferred), OR
+#   2. Swap the two `secrets.GITHUB_TOKEN` references for OCI auth below
+#      to `secrets.GHCR_PULL_PAT` and username to `kluongTT`, mirroring
+#      ci.yaml's interim pattern.
+# The chart-push at the bottom keeps GITHUB_TOKEN — the published chart
+# (helm-charts/tt-operator) lands in tt-operator's own namespace so the
+# default token already has write.
+
 on:
   pull_request:
     paths:
