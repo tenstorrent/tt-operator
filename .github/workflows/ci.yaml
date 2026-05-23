@@ -41,3 +41,95 @@ jobs:
 
       - name: Helm template render
         run: helm template charts/tt-operator > /tmp/rendered.yaml
+
+  # Stands up a 1-node kind, installs the umbrella against it, and checks
+  # that nothing trips on image pulls or required-values. This is what
+  # catches bugs `helm lint` and `helm template` happily render past — most
+  # commonly: subchart image overrides that reference a tag or repo name
+  # that doesn't exist in GHCR (which would ImagePullBackOff a real cluster
+  # install). NFD is disabled and we stamp the PCI-presence label by hand
+  # so the driver DaemonSet schedules without real Tenstorrent hardware.
+  smoke-install:
+    needs: helm-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+
+      - name: Set up kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: tt-smoke
+          # Single-node: enough to exercise install + image-pull paths.
+          # The driver DS won't reach Ready in kind (no real kernel build
+          # tree at /lib/modules/<kver>/build) — that's expected; we only
+          # verify it gets PAST image pull.
+
+      - name: Docker + Helm login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Helm registry login (OCI subchart pull)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Pre-pull tt-k8s-driver-manager images + load into kind
+        # kind nodes run their own containerd; sharing the host's GHCR
+        # creds via per-pod imagePullSecrets is fiddly. Easier to pull on
+        # the host (where we ARE logged in) and side-load into kind.
+        run: |
+          for img in tt-k8s-driver-manager-controller tt-k8s-driver-manager-builder tt-k8s-driver-manager-flasher; do
+            docker pull "ghcr.io/tenstorrent/${img}:latest"
+            kind load docker-image "ghcr.io/tenstorrent/${img}:latest" --name tt-smoke
+          done
+
+      - name: Fake the NFD tt-present label on every node
+        # The driver DS nodeAffinity requires
+        # feature.node.kubernetes.io/pci-1200_1e52.present=true. We're
+        # not running NFD in this smoke (no PCI devices to detect), so
+        # stamp the label by hand to make the DS schedulable.
+        run: |
+          for node in $(kubectl get nodes -o name); do
+            kubectl label "$node" feature.node.kubernetes.io/pci-1200_1e52.present=true --overwrite
+          done
+
+      - name: helm dep build + install
+        run: |
+          helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+          helm repo update
+          helm dependency build charts/tt-operator
+          helm install tt-operator charts/tt-operator \
+            -n tt-operator-system --create-namespace \
+            --set node-feature-discovery.enabled=false
+
+      - name: Controller Deployment becomes Ready
+        run: |
+          kubectl -n tt-operator-system rollout status \
+            deployment/tt-k8s-driver-manager-controller --timeout=3m
+
+      - name: No ImagePullBackOff anywhere in the namespace
+        # The actual bug class this smoke test exists to catch: values.yaml
+        # references an image that doesn't exist. We let the DS try to
+        # schedule + pull, then assert no container is wedged on a missing
+        # image. The DS pod itself may CrashLoop later (kernel headers
+        # absent in kind) — that's OK; we only police image pulls here.
+        run: |
+          sleep 30
+          waiting=$(kubectl get pods -n tt-operator-system -o json | \
+            jq -r '[.items[].status.containerStatuses[]?.state.waiting.reason] | map(select(. != null)) | join(",")')
+          echo "Waiting reasons across namespace: $waiting"
+          if echo "$waiting" | grep -Eq "ImagePullBackOff|ErrImagePull"; then
+            echo "FAIL: missing image somewhere"
+            exit 1
+          fi
+          echo "OK"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl describe pods -n tt-operator-system
+          kubectl get events -n tt-operator-system --sort-by=.lastTimestamp | tail -40
