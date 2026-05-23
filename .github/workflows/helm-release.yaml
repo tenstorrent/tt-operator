@@ -1,20 +1,25 @@
 name: Release Helm Chart
 
-# TODO (cross-repo OCI auth): the `helm dependency build` steps below pull
-# the tt-k8s-driver-manager subchart, which is a GHCR package linked to
-# the tt-k8s-driver-manager repo. tt-operator's GITHUB_TOKEN does NOT have
-# auto-grant read access on it — same problem ci.yaml works around with
-# GHCR_PULL_PAT. This workflow currently still uses GITHUB_TOKEN because
-# it only runs on push-to-main / workflow_dispatch and hasn't run yet.
-# Before merging this branch to main, EITHER:
-#   1. Get an org admin to grant tt-operator read access on the 4 driver-
-#      manager packages (preferred), OR
-#   2. Swap the two `secrets.GITHUB_TOKEN` references for OCI auth below
-#      to `secrets.GHCR_PULL_PAT` and username to `kluongTT`, mirroring
-#      ci.yaml's interim pattern.
-# The chart-push at the bottom keeps GITHUB_TOKEN — the published chart
-# (helm-charts/tt-operator) lands in tt-operator's own namespace so the
-# default token already has write.
+# AUTH NOTE (interim): pulling and pushing use DIFFERENT credentials.
+#
+# - PULL  (helm dependency build of the tt-k8s-driver-manager subchart):
+#   tt-operator's GITHUB_TOKEN doesn't have cross-repo read on the
+#   driver-manager-linked GHCR package. Until an org admin grants access
+#   ("Manage Actions access → add tt-operator → Read" on the 4 packages),
+#   we authenticate the pull with the GHCR_PULL_PAT repo secret. Mirrors
+#   ci.yaml's pattern.
+#
+# - PUSH  (helm push of the umbrella chart to ghcr.io/.../helm-charts):
+#   the published artifact lands in tt-operator's own namespace, where
+#   GITHUB_TOKEN already has write — keep using it. PATs we set up have
+#   read scope only.
+#
+# `helm registry login` overwrites credentials in its single store, so we
+# log in twice: with the PAT before dep build, then re-login with
+# GITHUB_TOKEN before package + push.
+#
+# TODO: collapse back to a single GITHUB_TOKEN login once cross-repo
+# package access is granted.
 
 on:
   pull_request:
@@ -75,10 +80,13 @@ jobs:
           helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
           helm repo update
 
-      - name: Log in to GHCR (for OCI subchart pulls + chart push)
+      # See AUTH NOTE at top of file. Two-step login: PAT for the
+      # cross-repo subchart PULL, then GITHUB_TOKEN for the same-repo
+      # chart PUSH.
+      - name: Log in to GHCR with PAT (for OCI subchart pulls)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GHCR_PULL_PAT }}" | \
+            helm registry login ghcr.io --username kluongTT --password-stdin
 
       - name: Build dependencies
         run: helm dependency build charts/tt-operator
@@ -88,6 +96,11 @@ jobs:
         run: |
           VERSION=$(grep '^version:' charts/tt-operator/Chart.yaml | awk '{print $2}')
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Re-login with GITHUB_TOKEN (for umbrella chart push)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Package and push
         run: |
