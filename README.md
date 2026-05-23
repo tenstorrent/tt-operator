@@ -7,9 +7,12 @@ Umbrella Helm chart for running Tenstorrent workloads on Kubernetes. Installs:
 - **[tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager)** —
   controllers, CRDs, and images that own the lifecycle of `tt-kmd`,
   device firmware, and `tt-smi` on each node.
+- **[tt-fabric-manager](https://github.com/tenstorrent/tt-fabric-manager)** (opt-in) —
+  per-node agent + cluster controller for inter-card / inter-host
+  fabric topology.
 
-The controllers and per-node images live in `tt-k8s-driver-manager`; this
-repo is just the deployment surface.
+The controllers and per-node images live in their respective component
+repos; this repo is just the deployment surface.
 
 ## Install
 
@@ -38,7 +41,7 @@ build of the driver manager:
 ```bash
 helm upgrade tt-operator charts/tt-operator \
   --set tt-k8s-driver-manager.controller.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:<tag> \
-  --set tt-k8s-driver-manager.driver.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-installer:<tag> \
+  --set tt-k8s-driver-manager.driver.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:<tag> \
   --set tt-k8s-driver-manager.flasher.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:<tag>
 ```
 
