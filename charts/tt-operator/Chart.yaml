@@ -21,6 +21,9 @@ dependencies:
   # Source: github.com/tenstorrent/tt-fabric-manager
   - name: ttfm
     alias: tt-fabric-manager
-    version: "0.2.26"
+    # Prerelease from main @ 120f839 — picks up the chart-defaults
+    # cleanup in tenstorrent/tt-fabric-manager#261. Bump to a clean
+    # v0.2.27 once that tag is cut upstream.
+    version: "0.2.27-152.sha-120f839"
     repository: "oci://ghcr.io/tenstorrent/ttfm-helm"
     condition: tt-fabric-manager.enabled

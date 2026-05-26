@@ -48,9 +48,10 @@ tt-k8s-driver-manager:
 # Before setting enabled: true, an admin should plan to override at least:
 #   - imagePullSecrets: point at the GHCR pull secret available in your
 #     cluster.
-#   - fabric_manager_config.groups: list your cluster's actual node
-#     hostnames; the agents won't match otherwise.
 #   - ingress.enabled / ingress.host: review whether ingress fits your
 #     environment, and retarget the hostname if so.
+# Cluster fabric topology is configured via ttfm's site-specific values
+# files (values.<site>.yaml in tt-fabric-manager), not via chart values
+# here.
 tt-fabric-manager:
   enabled: false
