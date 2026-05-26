@@ -7,6 +7,6 @@ dependencies:
   version: 0.1.0
 - name: ttfm
   repository: oci://ghcr.io/tenstorrent/ttfm-helm
-  version: 0.2.26
-digest: sha256:2a27a443eca739769b442dfa845b6e2e1f105210778d63bd5109f50ffdbf181e
-generated: "2026-05-22T22:21:30.81915-05:00"
+  version: 0.2.27-153.sha-07c9edd
+digest: sha256:f84ad2031456f0e5a7ca787d35d96e88797899adb4886662b94b1fc389eab2ce
+generated: "2026-05-26T16:38:18.709992-05:00"
