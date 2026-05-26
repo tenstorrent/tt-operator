@@ -1,0 +1,46 @@
+name: 'Get version'
+description: |
+  Derive the chart version for this build. Mirrors the scheme used by
+  tt-fabric-manager so downstream pins (e.g. tt-flux) can target either
+  a stable `vX.Y.Z` tag or a pre-release matching a specific commit on
+  main.
+
+  Rules:
+    - No `v*.*.*` tag in the repo: version = 0.0.1-<run>.sha-<short>
+                                   (so the first cut tag should be v0.0.1).
+    - On a v*.*.* tag push:        version = <tag with leading v stripped>.
+    - On a push to a branch (main): bump the patch of the latest tag and
+                                    append -<run>.sha-<short>.
+outputs:
+  version:
+    description: "Chart version (semver, possibly with pre-release suffix)"
+    value: ${{ steps.get-version.outputs.version }}
+runs:
+  using: "composite"
+  steps:
+    - name: Git describe
+      id: git-describe
+      uses: proudust/gh-describe@v2
+      with:
+        match: v*.*.*
+    - name: Compute version
+      id: get-version
+      shell: bash
+      run: |
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+        if [ "${{ steps.git-describe.outputs.tag }}" == "" ]; then
+          # Bootstrap before any v*.*.* tag exists: emit 0.0.1 pre-releases
+          # so the first stable release will be 0.0.1 (cut via `git tag v0.0.1`).
+          echo "version=0.0.1-${{ github.run_number }}.sha-$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        CURRENT_VERSION="${{ steps.git-describe.outputs.tag }}"
+        CURRENT_VERSION="${CURRENT_VERSION#v}"
+        if [ "${{ github.ref_type }}" == "tag" ]; then
+          echo "version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+        else
+          CURRENT_VERSION="${CURRENT_VERSION%-sha-*}"
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          patch=$((patch + 1))
+          echo "version=${major}.${minor}.${patch}-${{ github.run_number }}.sha-$SHORT_SHA" >> "$GITHUB_OUTPUT"
+        fi
