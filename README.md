@@ -8,12 +8,20 @@ Umbrella Helm chart for running Tenstorrent workloads on Kubernetes. Installs:
 - **[tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager)** —
   controllers, CRDs, and images that own the lifecycle of `tt-kmd`,
   device firmware, and `tt-smi` on each node.
-- **[tt-fabric-manager](https://github.com/tenstorrent/tt-fabric-manager)** (opt-in) —
+- **[tt-fabric-manager](https://github.com/tenstorrent/tt-fabric-manager)** —
   per-node agent + cluster controller for inter-card / inter-host
   fabric topology.
+- **[tt-dra-driver](https://github.com/tenstorrent/tt-dra-driver)** —
+  DRA kubelet plugin that publishes Tenstorrent devices as
+  `ResourceSlices` (requires k8s 1.33+ with the DRA feature gate, and
+  `tt-fabric-manager` enabled).
+- **[tt-telemetry](https://github.com/tenstorrent/tt-telemetry)** —
+  collects device telemetry and exports a Prometheus endpoint plus a
+  simple web GUI.
 
-The controllers and per-node images live in their respective component
-repos; this repo is just the deployment surface.
+Each subchart can be turned off via `<name>.enabled=false` at install
+time. The controllers and per-node images live in their respective
+component repos; this repo is just the deployment surface.
 
 ## Install
 
