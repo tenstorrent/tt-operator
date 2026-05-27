@@ -1,14 +1,22 @@
 {{- if .Values.kubepmix.enabled }}
+{{- $ns := default "kube-pmix" .Values.kubepmix.namespace }}
 # kubepmix: mutating webhook that injects PMIx env into multi-node training
-# Jobs. The inner resources are intentionally not templatized — the only
-# knob is `.Values.kubepmix.enabled`. Prereq: cert-manager must be
-# pre-installed on the cluster (the umbrella does not ship it); the Issuer
-# and Certificate resources below depend on it.
+# Jobs. The only configurable knobs are `.Values.kubepmix.enabled` and
+# `.Values.kubepmix.namespace`. Prereq: cert-manager must be pre-installed
+# on the cluster (the umbrella does not ship it); the Issuer and Certificate
+# resources below depend on it.
+{{- if ne $ns .Release.Namespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+---
+{{- end }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: kube-pmix-selfsigned
-  namespace: kube-pmix
+  namespace: {{ $ns }}
 spec:
   selfSigned: {}
 ---
@@ -16,7 +24,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kube-pmix-tls
-  namespace: kube-pmix
+  namespace: {{ $ns }}
 spec:
   secretName: kube-pmix-tls
   issuerRef:
@@ -24,25 +32,20 @@ spec:
     kind: Issuer
   dnsNames:
     - kube-pmix
-    - kube-pmix.kube-pmix.svc
-    - kube-pmix.kube-pmix.svc.cluster.local
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: kube-pmix
+    - kube-pmix.{{ $ns }}.svc
+    - kube-pmix.{{ $ns }}.svc.cluster.local
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-pmix
-  namespace: kube-pmix
+  namespace: {{ $ns }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-pmix
-  namespace: kube-pmix
+  namespace: {{ $ns }}
 spec:
   replicas: 1
   selector:
@@ -92,7 +95,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-pmix
-  namespace: kube-pmix
+  namespace: {{ $ns }}
 spec:
   selector:
     app: kube-pmix
@@ -112,7 +115,7 @@ metadata:
   name: kube-pmix
   annotations:
     # cert-manager injects the CA bundle from this Certificate automatically.
-    cert-manager.io/inject-ca-from: kube-pmix/kube-pmix-tls
+    cert-manager.io/inject-ca-from: {{ $ns }}/kube-pmix-tls
 webhooks:
   - name: jobs.kube-pmix.io
     admissionReviewVersions: ["v1"]
@@ -121,7 +124,7 @@ webhooks:
     clientConfig:
       service:
         name: kube-pmix
-        namespace: kube-pmix
+        namespace: {{ $ns }}
         path: /mutate/jobs
         port: 443
     objectSelector:
@@ -137,7 +140,7 @@ webhooks:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: ["kube-pmix"]
+          values: [{{ $ns | quote }}]
 
   - name: pods.kube-pmix.io
     admissionReviewVersions: ["v1"]
@@ -146,7 +149,7 @@ webhooks:
     clientConfig:
       service:
         name: kube-pmix
-        namespace: kube-pmix
+        namespace: {{ $ns }}
         path: /mutate/pods
         port: 443
     objectSelector:
@@ -163,5 +166,5 @@ webhooks:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: ["kube-pmix"]
+          values: [{{ $ns | quote }}]
 {{- end }}

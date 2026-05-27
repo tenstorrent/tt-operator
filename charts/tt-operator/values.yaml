@@ -95,6 +95,11 @@ tt-telemetry:
 # JobSet (kubernetes-sigs/jobset) groups related Jobs into a single
 # managed unit; used by multi-node training workloads on Tenstorrent
 # hardware. No external prereqs.
+#
+# Note: the upstream jobset chart hardcodes `.Release.Namespace` in its
+# templates, so its resources always land in the umbrella's install
+# namespace. There's no per-subchart namespace knob to expose here without
+# forking jobset upstream.
 jobset:
   enabled: true
 
@@ -102,5 +107,15 @@ jobset:
 # launched on Tenstorrent multi-node training runs. Requires cert-manager
 # pre-installed on the cluster — the webhook's TLS cert is issued via
 # cert-manager Issuer + Certificate resources.
+#
+# `kubepmix.namespace` controls where the webhook's Deployment, Service,
+# Issuer, and Certificate land. Defaults to a dedicated `kube-pmix`
+# namespace (matches upstream's convention and keeps the webhook
+# discoverable as shared infra). Set to `.Release.Namespace` to
+# consolidate alongside the rest of tt-operator instead:
+#   --set kubepmix.namespace=tt-operator-system
+# The chart creates the namespace if it differs from the release ns;
+# otherwise it reuses the existing one.
 kubepmix:
   enabled: true
+  namespace: kube-pmix
