@@ -21,7 +21,7 @@ Umbrella Helm chart for running Tenstorrent workloads on Kubernetes. Installs:
 - **[JobSet](https://github.com/kubernetes-sigs/jobset)** —
   groups related Jobs into a single managed unit for multi-node
   training workloads.
-- **kubepmix** — mutating webhook that injects PMIx env vars into
+- **[kubepmix](https://github.com/kubepmix/kubepmix)** — mutating webhook that injects PMIx env vars into
   multi-node training Jobs.
 
 Each subchart can be turned off via `<name>.enabled=false` at install
