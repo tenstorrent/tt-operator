@@ -3,9 +3,9 @@
 #     feature.node.kubernetes.io/pci-1200_1e52.present label)
 #   - tt-k8s-driver-manager (controllers + CRDs + images for tt-kmd, firmware,
 #     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
-#   - tt-fabric-manager (opt-in; cluster fabric/interconnect manager — see
+#   - tt-fabric-manager (cluster fabric/interconnect manager — see
 #     github.com/tenstorrent/tt-fabric-manager)
-#   - tt-dra-driver (opt-in; DRA kubelet plugin publishing Tenstorrent devices
+#   - tt-dra-driver (DRA kubelet plugin publishing Tenstorrent devices
 #     as ResourceSlices — see github.com/tenstorrent/tt-dra-driver)
 #
 # Everything below is wired into one of the subcharts.
