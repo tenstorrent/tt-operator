@@ -74,5 +74,16 @@ tt-dra-driver:
 
 # tt-telemetry collects Tenstorrent device telemetry and exports it via a
 # Prometheus HTTP endpoint and a simple web GUI. Alpha software.
+#
+# Namespace consolidation: tt-telemetry's chart hardcodes its install
+# namespace via .Values.namespace (no Release.Namespace fallback in the
+# template). We override it here so the Deployment/DaemonSet/Service land
+# alongside the rest of tt-operator instead of in a dedicated
+# `tt-telemetry` namespace. If you install the umbrella into a namespace
+# other than `tt-operator-system`, override this value to match — e.g.
+#   helm install ... -n my-ns --set tt-telemetry.namespace=my-ns
+# (podMonitor.namespace is intentionally left at upstream default
+# `monitoring`, where Prometheus typically scrapes from.)
 tt-telemetry:
   enabled: true
+  namespace: tt-operator-system
