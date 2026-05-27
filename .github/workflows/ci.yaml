@@ -113,7 +113,8 @@ jobs:
             -n tt-operator-system --create-namespace \
             --set node-feature-discovery.enabled=false \
             --set tt-fabric-manager.enabled=false \
-            --set tt-dra-driver.enabled=false
+            --set tt-dra-driver.enabled=false \
+            --set tt-telemetry.enabled=false
 
       - name: Controller Deployment becomes Ready
         # helm install returns before its resources are materialized in the

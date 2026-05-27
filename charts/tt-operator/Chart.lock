@@ -11,5 +11,8 @@ dependencies:
 - name: tt-dra-driver
   repository: oci://ghcr.io/tenstorrent/helm
   version: 0.0.23
-digest: sha256:4ea3aec3ca5b0f7c076b4efd1dd05d79a1e60b5914e8b8fefa381f7271eb833a
-generated: "2026-05-27T10:23:09.051295-05:00"
+- name: tt-telemetry
+  repository: oci://ghcr.io/tenstorrent/tt-telemetry-helm
+  version: 0.0.4-alpha
+digest: sha256:fb2b92f0a04cf8b6fc9fd09437affec13018f110a25ced95b92914b0a3485419
+generated: "2026-05-27T13:45:01.515291-05:00"
