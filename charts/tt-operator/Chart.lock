@@ -7,7 +7,7 @@ dependencies:
   version: 0.1.0
 - name: ttfm
   repository: oci://ghcr.io/tenstorrent/ttfm-helm
-  version: 0.2.27-155.sha-235d0ab
+  version: 0.2.27-156.sha-957f2ad
 - name: tt-dra-driver
   repository: oci://ghcr.io/tenstorrent/helm
   version: 0.0.23
@@ -17,5 +17,5 @@ dependencies:
 - name: jobset
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
-digest: sha256:02c50bfb05f7d21c7b55b89c9b1ff9df0d428be7ca799568b6fa82eb2c36908a
-generated: "2026-05-27T13:54:43.517035-05:00"
+digest: sha256:492cc718f625f111f6c9ebd6a14df9d442895b9530902dd4d46119099af3913e
+generated: "2026-05-27T17:34:55.278782-05:00"
