@@ -8,5 +8,8 @@ dependencies:
 - name: ttfm
   repository: oci://ghcr.io/tenstorrent/ttfm-helm
   version: 0.2.27-153.sha-07c9edd
-digest: sha256:f84ad2031456f0e5a7ca787d35d96e88797899adb4886662b94b1fc389eab2ce
-generated: "2026-05-26T16:38:18.709992-05:00"
+- name: tt-dra-driver
+  repository: oci://ghcr.io/tenstorrent/helm
+  version: 0.0.23
+digest: sha256:595451b4cb71063a39c64146b1c22c1724e452f1d462ad226522c99a1b846e05
+generated: "2026-05-27T10:14:07.751527-05:00"

@@ -5,6 +5,8 @@
 #     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
 #   - tt-fabric-manager (opt-in; cluster fabric/interconnect manager — see
 #     github.com/tenstorrent/tt-fabric-manager)
+#   - tt-dra-driver (opt-in; DRA kubelet plugin publishing Tenstorrent devices
+#     as ResourceSlices — see github.com/tenstorrent/tt-dra-driver)
 #
 # Everything below is wired into one of the subcharts.
 
@@ -53,4 +55,17 @@ tt-k8s-driver-manager:
 #   - ingress.enabled / ingress.host: review whether ingress fits your
 #     environment, and retarget the hostname if so.
 tt-fabric-manager:
+  enabled: false
+
+# tt-dra-driver is a per-node kubelet plugin that publishes Tenstorrent
+# devices as DRA ResourceSlices. Opt-in. Before setting enabled: true,
+# the admin must satisfy these prerequisites:
+#   - k8s 1.33+ on every node (subchart's kubeVersion is tighter than the
+#     umbrella's >=1.27.0-0).
+#   - tt-fabric-manager.enabled: true — the DRA driver discovers devices
+#     by calling TTFM's GetTopology gRPC, and won't publish slices without
+#     a TTFM agent on each node.
+#   - DynamicResourceAllocation feature gate enabled on kube-apiserver and
+#     kubelet on every node (DRA is GA in 1.34, feature-gated in 1.33).
+tt-dra-driver:
   enabled: false
