@@ -2,8 +2,9 @@
 
 Umbrella Helm chart for running Tenstorrent workloads on Kubernetes. Installs:
 
-- **node-feature-discovery** — stamps `feature.node.kubernetes.io/pci-1200_1e52.present=true`
-  on every node that has a Tenstorrent PCI device.
+- **[node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery)** —
+  stamps `feature.node.kubernetes.io/pci-1200_1e52.present=true` on
+  every node that has a Tenstorrent PCI device.
 - **[tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager)** —
   controllers, CRDs, and images that own the lifecycle of `tt-kmd`,
   device firmware, and `tt-smi` on each node.
