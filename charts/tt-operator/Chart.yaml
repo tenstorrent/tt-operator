@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tt-operator
-description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, and optionally tt-fabric-manager for cluster fabric/interconnect management.
+description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, and optionally tt-fabric-manager for cluster fabric/interconnect management and tt-dra-driver for DRA-based device scheduling.
 type: application
 # Sentinel values — overwritten by .github/workflows/helm-release.yaml at
 # publish time. On main pushes the chart is published as
@@ -26,6 +26,17 @@ dependencies:
   # Source: github.com/tenstorrent/tt-fabric-manager
   - name: ttfm
     alias: tt-fabric-manager
-    version: "0.2.27-153.sha-07c9edd"
+    version: "0.2.27-155.sha-235d0ab"
     repository: "oci://ghcr.io/tenstorrent/ttfm-helm"
     condition: tt-fabric-manager.enabled
+  # tt-dra-driver: Tenstorrent DRA (Dynamic Resource Allocation) driver.
+  # Per-node kubelet plugin that discovers devices via TTFM's GetTopology
+  # gRPC and publishes them as DRA ResourceSlices for scheduling. Opt-in;
+  # requires k8s 1.33+, tt-fabric-manager enabled, and the
+  # DynamicResourceAllocation feature gate on every node's apiserver +
+  # kubelet (DRA went GA in 1.34; gated in 1.33).
+  # Source: github.com/tenstorrent/tt-dra-driver
+  - name: tt-dra-driver
+    version: "0.0.23"
+    repository: "oci://ghcr.io/tenstorrent/helm"
+    condition: tt-dra-driver.enabled
