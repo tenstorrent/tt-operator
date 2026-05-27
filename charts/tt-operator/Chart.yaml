@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tt-operator
-description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, tt-telemetry for device metrics export, and optionally tt-fabric-manager for cluster fabric/interconnect management and tt-dra-driver for DRA-based device scheduling.
+description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, tt-fabric-manager for cluster fabric/interconnect management, tt-dra-driver for DRA-based device scheduling, tt-telemetry for device metrics export, jobset for multi-job workloads, and kubepmix for PMIx-aware MPI scheduling.
 type: application
 # Sentinel values — overwritten by .github/workflows/helm-release.yaml at
 # publish time. On main pushes the chart is published as
@@ -47,3 +47,11 @@ dependencies:
     version: "0.0.4-alpha"
     repository: "oci://ghcr.io/tenstorrent/tt-telemetry-helm"
     condition: tt-telemetry.enabled
+  # JobSet (kubernetes-sigs/jobset): groups related Jobs into a single
+  # managed unit; used by multi-node training workloads on Tenstorrent
+  # hardware.
+  # Source: github.com/kubernetes-sigs/jobset
+  - name: jobset
+    version: "0.12.0"
+    repository: "oci://registry.k8s.io/jobset/charts"
+    condition: jobset.enabled
