@@ -2,8 +2,13 @@ apiVersion: v2
 name: tt-operator
 description: Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, and optionally tt-fabric-manager for cluster fabric/interconnect management.
 type: application
-version: 0.1.1
-appVersion: "0.1.1"
+# Sentinel values — overwritten by .github/workflows/helm-release.yaml at
+# publish time. On main pushes the chart is published as
+# <next-patch>-<run>.sha-<short>; on a v*.*.* tag push it's the tag itself.
+# Keep these as 0.0.0 in source so a stray local `helm package` doesn't
+# silently land in a real release lane.
+version: 0.0.0
+appVersion: "0.0.0"
 dependencies:
   - name: node-feature-discovery
     version: "0.18.3"

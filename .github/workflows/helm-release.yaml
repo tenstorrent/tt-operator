@@ -25,11 +25,12 @@ on:
   pull_request:
     paths:
       - charts/**
+      - .github/**
   push:
     branches:
       - main
-    paths:
-      - charts/**
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
@@ -91,11 +92,20 @@ jobs:
       - name: Build dependencies
         run: helm dependency build charts/tt-operator
 
-      - name: Extract chart version
+      # Generates a chart version that's either:
+      #   - the v*.*.* tag being pushed (stable release), or
+      #   - <next-patch>-<run>.sha-<short> (pre-release on every push to main).
+      # Chart.yaml's `version: 0.0.0` is a sentinel that the next step
+      # rewrites before packaging.
+      - name: Generate chart version
         id: chart
+        uses: ./.github/actions/version
+
+      - name: Stamp Chart.yaml with generated version
+        working-directory: charts/tt-operator
         run: |
-          VERSION=$(grep '^version:' charts/tt-operator/Chart.yaml | awk '{print $2}')
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          sed -i "s/^version:.*/version: ${{ steps.chart.outputs.version }}/" Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.chart.outputs.version }}\"/" Chart.yaml
 
       - name: Re-login with GITHUB_TOKEN (for umbrella chart push)
         run: |
