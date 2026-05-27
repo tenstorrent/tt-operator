@@ -1,0 +1,170 @@
+{{- if .Values.kubepmix.enabled }}
+{{- $ns := default "kube-pmix" .Values.kubepmix.namespace }}
+# kubepmix: mutating webhook that injects PMIx env into multi-node training
+# Jobs. The only configurable knobs are `.Values.kubepmix.enabled` and
+# `.Values.kubepmix.namespace`. Prereq: cert-manager must be pre-installed
+# on the cluster (the umbrella does not ship it); the Issuer and Certificate
+# resources below depend on it.
+{{- if ne $ns .Release.Namespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+---
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: kube-pmix-selfsigned
+  namespace: {{ $ns }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kube-pmix-tls
+  namespace: {{ $ns }}
+spec:
+  secretName: kube-pmix-tls
+  issuerRef:
+    name: kube-pmix-selfsigned
+    kind: Issuer
+  dnsNames:
+    - kube-pmix
+    - kube-pmix.{{ $ns }}.svc
+    - kube-pmix.{{ $ns }}.svc.cluster.local
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-pmix
+  namespace: {{ $ns }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-pmix
+  namespace: {{ $ns }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-pmix
+  template:
+    metadata:
+      labels:
+        app: kube-pmix
+    spec:
+      serviceAccountName: kube-pmix
+      containers:
+        - name: kube-pmix
+          image: ghcr.io/kubepmix/kubepmix:0.0.12
+          ports:
+            - name: pmix
+              containerPort: 3333
+              protocol: TCP
+            - name: webhook
+              containerPort: 8443
+              protocol: TCP
+          env:
+            - name: PMIX_MCA_psec
+              value: "none" # Do not check processes UID and GUID
+            - name: PMIX_MCA_ptl_tcp_ipv4_port
+              value: "3133"
+            - name: PMIX_MCA_ptl_tcp_if_exclude
+              value: "lo"
+            - name: KUBE_PMIX_WEBHOOK_ENABLED
+              value: "true"
+            - name: KUBE_PMIX_WEBHOOK_PORT
+              value: "8443"
+            - name: KUBE_PMIX_TLS_CERT
+              value: /tls/tls.crt
+            - name: KUBE_PMIX_TLS_KEY
+              value: /tls/tls.key
+          volumeMounts:
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+      volumes:
+        - name: tls
+          secret:
+            secretName: kube-pmix-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-pmix
+  namespace: {{ $ns }}
+spec:
+  selector:
+    app: kube-pmix
+  ports:
+    - name: pmix
+      port: 3333
+      targetPort: pmix
+      protocol: TCP
+    - name: webhook
+      port: 443
+      targetPort: webhook
+      protocol: TCP
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: kube-pmix
+  annotations:
+    # cert-manager injects the CA bundle from this Certificate automatically.
+    cert-manager.io/inject-ca-from: {{ $ns }}/kube-pmix-tls
+webhooks:
+  - name: jobs.kube-pmix.io
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    clientConfig:
+      service:
+        name: kube-pmix
+        namespace: {{ $ns }}
+        path: /mutate/jobs
+        port: 443
+    objectSelector:
+      matchLabels:
+        kubepmix.dev/enabled: "true"
+    rules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        resources: ["jobs"]
+        operations: ["CREATE"]
+        scope: "*"
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [{{ $ns | quote }}]
+
+  - name: pods.kube-pmix.io
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Fail
+    clientConfig:
+      service:
+        name: kube-pmix
+        namespace: {{ $ns }}
+        path: /mutate/pods
+        port: 443
+    objectSelector:
+      matchExpressions:
+        - key: kubepmix.dev/namespace
+          operator: Exists
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE"]
+        scope: "*"
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [{{ $ns | quote }}]
+{{- end }}

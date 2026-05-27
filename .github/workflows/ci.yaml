@@ -109,9 +109,14 @@ jobs:
           helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
           helm repo update
           helm dependency build charts/tt-operator
+          # Disable subcharts whose prereqs aren't in kind: NFD (we fake
+          # the tt-present label by hand), kubepmix (needs cert-manager),
+          # tt-fabric-manager (needs cluster-specific config), tt-dra-driver
+          # (needs k8s 1.33 + DRA feature gate + TTFM).
           helm install tt-operator charts/tt-operator \
             -n tt-operator-system --create-namespace \
             --set node-feature-discovery.enabled=false \
+            --set kubepmix.enabled=false \
             --set tt-fabric-manager.enabled=false \
             --set tt-dra-driver.enabled=false \
             --set tt-telemetry.enabled=false

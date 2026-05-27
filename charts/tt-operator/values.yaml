@@ -9,6 +9,10 @@
 #     as ResourceSlices — see github.com/tenstorrent/tt-dra-driver)
 #   - tt-telemetry (collects device telemetry, exports Prometheus metrics +
 #     web GUI — see github.com/tenstorrent/tt-telemetry)
+#   - jobset (kubernetes-sigs/jobset; grouped Job lifecycle used by
+#     multi-node training workloads)
+#   - kubepmix (mutating webhook injecting PMIx env into multi-node
+#     training Jobs; requires cert-manager pre-installed)
 #
 # Everything below is wired into one of the subcharts.
 
@@ -87,3 +91,31 @@ tt-dra-driver:
 tt-telemetry:
   enabled: true
   namespace: tt-operator-system
+
+# JobSet (kubernetes-sigs/jobset) groups related Jobs into a single
+# managed unit; used by multi-node training workloads on Tenstorrent
+# hardware. No external prereqs.
+#
+# Note: the upstream jobset chart hardcodes `.Release.Namespace` in its
+# templates, so its resources always land in the umbrella's install
+# namespace. There's no per-subchart namespace knob to expose here without
+# forking jobset upstream.
+jobset:
+  enabled: true
+
+# kubepmix is a mutating webhook that injects PMIx env vars into Jobs
+# launched on Tenstorrent multi-node training runs. Requires cert-manager
+# pre-installed on the cluster — the webhook's TLS cert is issued via
+# cert-manager Issuer + Certificate resources.
+#
+# `kubepmix.namespace` controls where the webhook's Deployment, Service,
+# Issuer, and Certificate land. Defaults to a dedicated `kube-pmix`
+# namespace (matches upstream's convention and keeps the webhook
+# discoverable as shared infra). Set to `.Release.Namespace` to
+# consolidate alongside the rest of tt-operator instead:
+#   --set kubepmix.namespace=tt-operator-system
+# The chart creates the namespace if it differs from the release ns;
+# otherwise it reuses the existing one.
+kubepmix:
+  enabled: true
+  namespace: kube-pmix
