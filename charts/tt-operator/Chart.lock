@@ -13,9 +13,9 @@ dependencies:
   version: 0.0.23
 - name: tt-telemetry
   repository: oci://ghcr.io/tenstorrent/tt-telemetry-helm
-  version: 0.0.5-alpha
+  version: 0.0.6-alpha
 - name: jobset
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
-digest: sha256:922dcae04685dc1c8b46825b2b48f1178c4b3bf71c22aeb70fad26110c5931f4
-generated: "2026-05-27T17:57:45.327792-05:00"
+digest: sha256:646a97c4b80df06cbef93d02d26b4404992e605e41f8338d8e501750aa6b1116
+generated: "2026-05-28T12:21:13.001158-05:00"
