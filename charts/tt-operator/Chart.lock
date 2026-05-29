@@ -18,4 +18,4 @@ dependencies:
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
 digest: sha256:cae253f5ff33f232ce184257483f093c1e00cf73e6d8832191eacbf418fac904
-generated: "2026-05-28T13:50:22.335653-05:00"
+generated: "2026-05-29T17:23:24.468063-05:00"
