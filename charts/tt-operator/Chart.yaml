@@ -14,9 +14,8 @@ dependencies:
     version: "0.18.3"
     repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
     condition: node-feature-discovery.enabled
-  # tt-k8s-driver-manager 0.1.0 republished 2026-05-29 with chart-level
-  # `imagePullSecrets` value (tt-k8s-driver-manager#4) — flows to both
-  # the controller ServiceAccount and the per-node installer ServiceAccount.
+  # tt-k8s-driver-manager 0.1.0 republished 2026-06-03 with #5 (ipmitool
+  # in flasher), #6 (maxParallel honored), and #7 (pre-flash heal).
   - name: tt-k8s-driver-manager
     version: "0.1.0"
     repository: "oci://ghcr.io/tenstorrent/helm-charts"
