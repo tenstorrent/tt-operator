@@ -62,6 +62,11 @@ tt-k8s-driver-manager:
 #     environment, and retarget the hostname if so.
 tt-fabric-manager:
   enabled: true
+  # Drop the umbrella's release prefix so Service names render as
+  # `tt-fabric-manager-{controller,agent}` instead of
+  # `tt-operator-tt-fabric-manager-{controller,agent}`. Matches cert-manager
+  # / NVIDIA-GPU-operator naming (platform component, not release identity).
+  fullnameOverride: tt-fabric-manager
 
 # tt-dra-driver is a per-node kubelet plugin that publishes Tenstorrent
 # devices as DRA ResourceSlices. Opt-in. Before setting enabled: true,
