@@ -97,6 +97,15 @@ tt-telemetry:
   enabled: true
   namespace: tt-operator-system
 
+  # Route topology resolution through the in-cluster TTFM controller.
+  # Address is deterministic given the umbrella's tt-fabric-manager
+  # fullnameOverride (`tt-fabric-manager`) + the chart's Service
+  # naming (`-controller`) + this release namespace. Sites with TTFM
+  # disabled (or no FSD staged) can keep the address — collectors that
+  # fail GetTopology fall back to monitoring all Ethernet channels.
+  config:
+    fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
+
 # JobSet (kubernetes-sigs/jobset) groups related Jobs into a single
 # managed unit; used by multi-node training workloads on Tenstorrent
 # hardware. No external prereqs.
