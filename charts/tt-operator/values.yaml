@@ -97,6 +97,14 @@ tt-telemetry:
   enabled: true
   namespace: tt-operator-system
 
+  # Pin the published org-namespace image. The subchart's own default
+  # still points at a personal-namespace dev `:latest` tag, which
+  # leaks into umbrella consumers if not overridden here. Keep the tag
+  # in lockstep with the tt-telemetry subchart version in Chart.yaml.
+  image:
+    repository: ghcr.io/tenstorrent/tt-telemetry
+    tag: "0.0.8-alpha"
+
   # Route topology resolution through the in-cluster TTFM controller.
   # Address is deterministic given the umbrella's tt-fabric-manager
   # fullnameOverride (`tt-fabric-manager`) + the chart's Service
