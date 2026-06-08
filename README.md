@@ -72,13 +72,21 @@ that bumps a subchart owning vendored CRDs:
 
 ```bash
 helm pull oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
-kubectl apply -f /tmp/tt-operator-pull/tt-operator/crds/
+kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/crds/
 helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> \
   -n tt-operator-system --reuse-values
 ```
 
+`--server-side` matches upstream JobSet's documented install (its CRD's
+validation schema exceeds the 262144-byte client-side
+`last-applied-configuration` annotation limit, so plain
+`kubectl apply -f` fails). `--force-conflicts` is needed when
+re-applying over a CRD whose fields are already field-managed (e.g. by
+a prior Helm install). See
+[kubernetes-sigs/jobset README](https://github.com/kubernetes-sigs/jobset#installation).
+
 If you're working from a checkout, replace the `helm pull` step with
-`kubectl apply -f charts/tt-operator/crds/`.
+`kubectl apply --server-side --force-conflicts -f charts/tt-operator/crds/`.
 
 To refresh the vendored CRDs after bumping a subchart version in
 `Chart.yaml`:
