@@ -60,6 +60,33 @@ helm install tt-operator oci://ghcr.io/tenstorrent/helm-charts/tt-operator \
   --namespace tt-operator-system --create-namespace
 ```
 
+## Upgrades
+
+Some subcharts (currently: jobset) ship their CRDs out-of-band from the
+Helm chart itself. The umbrella vendors those CRDs into
+`charts/tt-operator/crds/`. Helm applies that directory on `helm install`
+only — `helm upgrade` deliberately skips it (Helm 3 convention, to
+prevent the chart from silently widening or narrowing the CRD schema
+under live CRs). Re-apply CRDs by hand when upgrading to a chart version
+that bumps a subchart owning vendored CRDs:
+
+```bash
+helm pull oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
+kubectl apply -f /tmp/tt-operator-pull/tt-operator/crds/
+helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> \
+  -n tt-operator-system --reuse-values
+```
+
+If you're working from a checkout, replace the `helm pull` step with
+`kubectl apply -f charts/tt-operator/crds/`.
+
+To refresh the vendored CRDs after bumping a subchart version in
+`Chart.yaml`:
+
+```bash
+hack/refresh-vendored-crds.sh
+```
+
 ## Pinning subchart images
 
 The umbrella forwards image overrides to `tt-k8s-driver-manager` via the
