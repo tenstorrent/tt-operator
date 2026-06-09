@@ -81,6 +81,16 @@ tt-fabric-manager:
 tt-dra-driver:
   enabled: true
 
+  # Point at the in-cluster TTFM agent Service. Subchart default is
+  # `ttfm-agent.ttfm.svc.cluster.local:50053`, which references the
+  # upstream chart's pre-fullnameOverride Service name + a separate
+  # `ttfm` namespace — neither matches what this umbrella deploys
+  # (`tt-fabric-manager-agent` in the release namespace). The agent
+  # Service uses `internalTrafficPolicy: Local`, so DNS resolves to the
+  # local node's agent pod.
+  kubeletPlugin:
+    fabricManagerAgentAddress: tt-fabric-manager-agent.tt-operator-system.svc.cluster.local:50053
+
 # tt-telemetry collects Tenstorrent device telemetry and exports it via a
 # Prometheus HTTP endpoint and a simple web GUI. Alpha software.
 #
