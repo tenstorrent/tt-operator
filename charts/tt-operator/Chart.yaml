@@ -39,7 +39,7 @@ dependencies:
   # kubelet (DRA went GA in 1.34; gated in 1.33).
   # Source: github.com/tenstorrent/tt-dra-driver
   - name: tt-dra-driver
-    version: "0.0.23"
+    version: "0.0.29"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-dra-driver.enabled
   # tt-telemetry: collects Tenstorrent device telemetry and exposes it via
