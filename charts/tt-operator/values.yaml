@@ -34,19 +34,6 @@ node-feature-discovery:
 # NFD labelling and intend to manage drivers some other way).
 tt-k8s-driver-manager:
   enabled: true
-  # Image tags track the driver-manager :latest published from main.
-  # Switch to :0.1.0 once a v0.1.0 git tag is cut on tt-k8s-driver-manager
-  # (the images workflow only produces semver tags from git tags, not from
-  # chart-version reads).
-  controller:
-    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:latest
-  # `driver.image` is the per-node builder image (clones tt-kmd, builds
-  # against host kernel headers, insmods). Pre-pivot name was -installer;
-  # the abandoned :dev tag of that older image is also gone.
-  driver:
-    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:latest
-  flasher:
-    image: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:latest
 
 # tt-fabric-manager (TTFM) owns inter-card / inter-host fabric topology and
 # exposes a GetTopology gRPC consumed by downstream allocators (e.g.

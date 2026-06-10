@@ -4,7 +4,7 @@ dependencies:
   version: 0.18.3
 - name: tt-k8s-driver-manager
   repository: oci://ghcr.io/tenstorrent/helm-charts
-  version: 0.1.0
+  version: 0.0.1
 - name: ttfm
   repository: oci://ghcr.io/tenstorrent/ttfm-helm
   version: 0.2.27-156.sha-957f2ad
@@ -17,5 +17,5 @@ dependencies:
 - name: jobset
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
-digest: sha256:b8bb40053454a37cb08b06de10e21c0f79a3a43b22b22d131d71a1ad0e5010cf
-generated: "2026-06-09T14:28:48.046626-05:00"
+digest: sha256:3531ae81a65da9ffbf384f336da59c4074d054d0d3b0b45ddb26561b4476fd39
+generated: "2026-06-09T21:48:54.499687-05:00"

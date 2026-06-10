@@ -14,10 +14,8 @@ dependencies:
     version: "0.18.3"
     repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
     condition: node-feature-discovery.enabled
-  # tt-k8s-driver-manager 0.1.0 republished 2026-06-03 with #5 (ipmitool
-  # in flasher), #6 (maxParallel honored), and #7 (pre-flash heal).
   - name: tt-k8s-driver-manager
-    version: "0.1.0"
+    version: "0.0.1"
     repository: "oci://ghcr.io/tenstorrent/helm-charts"
     condition: tt-k8s-driver-manager.enabled
   # Tenstorrent Fabric Manager (TTFM): per-node agent + cluster controller
