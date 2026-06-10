@@ -88,10 +88,13 @@ jobs:
         # kind nodes run their own containerd; sharing the host's GHCR
         # creds via per-pod imagePullSecrets is fiddly. Easier to pull on
         # the host (where we ARE logged in) and side-load into kind.
+        # Tag must match the tt-k8s-driver-manager dependency version in
+        # charts/tt-operator/Chart.yaml (image tags default to appVersion,
+        # which equals the chart version).
         run: |
           for img in tt-k8s-driver-manager-controller tt-k8s-driver-manager-builder tt-k8s-driver-manager-flasher; do
-            docker pull "ghcr.io/tenstorrent/${img}:latest"
-            kind load docker-image "ghcr.io/tenstorrent/${img}:latest" --name tt-smoke
+            docker pull "ghcr.io/tenstorrent/${img}:0.0.1"
+            kind load docker-image "ghcr.io/tenstorrent/${img}:0.0.1" --name tt-smoke
           done
 
       - name: Fake the NFD tt-present label on every node
