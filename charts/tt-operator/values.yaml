@@ -118,18 +118,14 @@ tt-telemetry:
   # stops matching, so flipping `tenstorrent.com/deploy.tt-telemetry=false`
   # on a node drains telemetry there without touching the DS as a whole.
   # Absent or "true" keeps scheduling; only an explicit "false" drains.
+  #
+  # `pci-1200_1e52.present` is applied by NFD (umbrella default), which we
+  # rely on as the canonical "Tenstorrent-equipped node" signal.
   daemonset:
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
           nodeSelectorTerms:
-            - matchExpressions:
-                - key: tenstorrent.com/has-tt
-                  operator: In
-                  values: ["true"]
-                - key: tenstorrent.com/deploy.tt-telemetry
-                  operator: NotIn
-                  values: ["false"]
             - matchExpressions:
                 - key: feature.node.kubernetes.io/pci-1200_1e52.present
                   operator: In
