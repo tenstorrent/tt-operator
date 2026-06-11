@@ -111,6 +111,29 @@ tt-telemetry:
   config:
     fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
 
+  # Scope the collector DaemonSet to TT-equipped nodes AND let operators
+  # drain it from a single node by flipping the deploy-gate label —
+  # NVIDIA gpu-operator pattern (see `nvidia.com/gpu.deploy.dcgm-exporter`).
+  # The DS controller terminates the per-node pod when its nodeAffinity
+  # stops matching, so flipping `tenstorrent.com/deploy.tt-telemetry=false`
+  # on a node drains telemetry there without touching the DS as a whole.
+  # Absent or "true" keeps scheduling; only an explicit "false" drains.
+  #
+  # `pci-1200_1e52.present` is applied by NFD (umbrella default), which we
+  # rely on as the canonical "Tenstorrent-equipped node" signal.
+  daemonset:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: feature.node.kubernetes.io/pci-1200_1e52.present
+                  operator: In
+                  values: ["true"]
+                - key: tenstorrent.com/deploy.tt-telemetry
+                  operator: NotIn
+                  values: ["false"]
+
 # JobSet (kubernetes-sigs/jobset) groups related Jobs into a single
 # managed unit; used by multi-node training workloads on Tenstorrent
 # hardware. No external prereqs.
