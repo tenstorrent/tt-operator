@@ -100,7 +100,7 @@ tt-telemetry:
   # in lockstep with the tt-telemetry subchart version in Chart.yaml.
   image:
     repository: ghcr.io/tenstorrent/tt-telemetry
-    tag: "0.0.8-alpha"
+    tag: "0.0.10-alpha"
 
   # Route topology resolution through the in-cluster TTFM controller.
   # Address is deterministic given the umbrella's tt-fabric-manager
