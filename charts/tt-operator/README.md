@@ -19,9 +19,9 @@ Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling,
 |------------|------|---------|
 | https://kubernetes-sigs.github.io/node-feature-discovery/charts | node-feature-discovery | 0.18.3 |
 | oci://ghcr.io/tenstorrent/helm-charts | tt-k8s-driver-manager | 0.0.2-9.sha-6f96f8f |
-| oci://ghcr.io/tenstorrent/ttfm-helm | ttfm(tt-fabric-manager) | 0.2.27-156.sha-957f2ad |
 | oci://ghcr.io/tenstorrent/helm | tt-dra-driver | 0.0.29 |
 | oci://ghcr.io/tenstorrent/tt-telemetry-helm | tt-telemetry | 0.0.8-alpha |
+| oci://ghcr.io/tenstorrent/ttfm-helm | tt-fabric-manager(ttfm) | 0.2.27-156.sha-957f2ad |
 | oci://registry.k8s.io/jobset/charts | jobset | 0.12.0 |
 
 ## Values
