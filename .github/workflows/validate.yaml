@@ -193,7 +193,9 @@ jobs:
         with:
           ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
       - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}"
+        # --verify=false: recent Helm attempts plugin provenance verification by
+        # default, which the helm-unittest git source doesn't provide.
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}" --verify=false
       - name: Run contract tests
         # --strict fails on empty/❓ suites so a mis-pathed test can't silently pass.
         run: helm unittest --strict charts/tt-operator

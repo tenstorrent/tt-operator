@@ -55,10 +55,12 @@ docs-check: docs
 
 .PHONY: unittest
 unittest: helm-deps
-	# Run the helm-unittest contract suites in charts/tt-operator/tests/.
-	# Requires the helm-unittest plugin; install pinned if absent. Needs a
-	# prior `helm registry login ghcr.io` for the OCI subchart pull (helm-deps).
+	# Local mirror of the validate.yaml helm-unittest job; CI is the routine
+	# runner. Not part of the no-auth local flow: helm-deps pulls the OCI
+	# subchart, so this needs a prior `helm registry login ghcr.io`.
+	# --verify=false: recent Helm verifies plugin provenance by default, which
+	# the helm-unittest git source doesn't provide.
 	# HELM_UNITTEST_VERSION comes from hack/tool-versions.env (see top of file).
 	helm plugin list | grep -q unittest || \
-		helm plugin install https://github.com/helm-unittest/helm-unittest --version $(HELM_UNITTEST_VERSION)
+		helm plugin install https://github.com/helm-unittest/helm-unittest --version $(HELM_UNITTEST_VERSION) --verify=false
 	helm unittest --strict charts/tt-operator
