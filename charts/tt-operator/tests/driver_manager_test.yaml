@@ -1,0 +1,77 @@
+suite: tt-k8s-driver-manager (umbrella consumption contract)
+# Black-box contract for how the umbrella deploys the tt-k8s-driver-manager
+# subchart (pulled from OCI — no source in this repo). Every other subchart is
+# disabled so the only Deployment rendered is the driver-manager controller,
+# selectable by `kind` without knowing the subchart's resource names.
+#
+# What the subchart actually renders at install time: the controller
+# Deployment + its RBAC (controller/installer ServiceAccounts, ClusterRoles,
+# ClusterRoleBindings). There is NO DaemonSet here — the per-node installer
+# DaemonSet is created at runtime by the controller, and the driver/flasher
+# images are handed to the controller as the DRIVER_IMAGE / FLASHER_IMAGE env
+# vars. So the image-forwarding contract is asserted on the controller
+# Deployment, not on a DaemonSet.
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders the controller Deployment and a ServiceAccount
+    asserts:
+      - containsDocument:
+          kind: Deployment
+          apiVersion: apps/v1
+      - containsDocument:
+          kind: ServiceAccount
+          apiVersion: v1
+
+  - it: forwards the controller image override onto the manager container
+    # README-documented override contract: repository + tag (NOT a single
+    # `controller.image` string — the subchart indexes .repository/.tag).
+    set:
+      tt-k8s-driver-manager.controller.image.repository: ghcr.io/tenstorrent/tt-k8s-driver-manager-controller
+      tt-k8s-driver-manager.controller.image.tag: contract-test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:contract-test
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: forwards the driver + flasher image overrides as controller env vars
+    set:
+      tt-k8s-driver-manager.driver.image.repository: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder
+      tt-k8s-driver-manager.driver.image.tag: contract-test
+      tt-k8s-driver-manager.flasher.image.repository: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher
+      tt-k8s-driver-manager.flasher.image.tag: contract-test
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRIVER_IMAGE
+            value: ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:contract-test
+        documentSelector:
+          path: kind
+          value: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FLASHER_IMAGE
+            value: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:contract-test
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: renders nothing for the driver manager when disabled
+    set:
+      tt-k8s-driver-manager.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

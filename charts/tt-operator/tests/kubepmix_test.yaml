@@ -1,0 +1,79 @@
+suite: kubepmix webhook (umbrella-owned template)
+# kubepmix is the only chart-owned template (everything else is a subchart),
+# so it gets full, source-backed contract coverage: the enable toggle, the
+# namespace knob + its Namespace-creation guard, and the rendered resource set.
+templates:
+  - templates/kubepmix.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+tests:
+  - it: renders the full resource set in the default (separate) namespace
+    # ns (kube-pmix) != release ns (tt-operator-system), so the guard also
+    # emits a Namespace doc: Namespace + Issuer + Certificate + ServiceAccount
+    # + Deployment + Service + MutatingWebhookConfiguration = 7.
+    asserts:
+      - hasDocuments:
+          count: 7
+      - containsDocument:
+          kind: Namespace
+          apiVersion: v1
+          name: kube-pmix
+
+  - it: renders nothing when disabled
+    set:
+      kubepmix.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: consolidates into the release namespace without creating a Namespace
+    # ns == release ns, so the `ne $ns .Release.Namespace` guard drops the
+    # Namespace doc (7 -> 6) and resources land in the release namespace.
+    set:
+      kubepmix.namespace: tt-operator-system
+    asserts:
+      - hasDocuments:
+          count: 6
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: places resources in the configured namespace by default
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: kube-pmix
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: uses the pinned kubepmix image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/kubepmix/kubepmix:0.0.12
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: issues the webhook cert from the self-signed issuer
+    asserts:
+      - equal:
+          path: spec.issuerRef.name
+          value: kube-pmix-selfsigned
+        documentSelector:
+          path: kind
+          value: Certificate
+
+  - it: wires cert-manager CA injection on the webhook configuration
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: kube-pmix/kube-pmix-tls
+        documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration

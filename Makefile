@@ -5,6 +5,11 @@
 #   make helm-deps      # fetch subchart packages (NFD + tt-k8s-driver-manager)
 #   make helm-install   # install the umbrella into a cluster
 
+# Pinned tool versions (helm-docs, helm-unittest), shared with
+# .github/workflows/validate.yaml. Single source of truth — bump there.
+# Command-line overrides (e.g. `make docs HELM_DOCS_VERSION=v1.x`) still win.
+include hack/tool-versions.env
+
 KIND_CLUSTER ?= tt-operator-dev
 
 .PHONY: kind-up
@@ -33,15 +38,13 @@ helm-install: helm-deps
 	helm upgrade --install tt-operator charts/tt-operator \
 		--namespace tt-operator-system --create-namespace
 
-# Pinned helm-docs version — keep in sync with .github/workflows/validate.yaml.
-HELM_DOCS_VERSION ?= v1.14.2
-
 .PHONY: docs
 docs:
 	# Regenerate charts/tt-operator/README.md from Chart.yaml + the `# --`
 	# annotations in values.yaml, using README.md.gotmpl as the template.
 	# Run through Docker so no local helm-docs install is needed; map to the
 	# host user so the generated file isn't left root-owned.
+	# HELM_DOCS_VERSION comes from hack/tool-versions.env (see top of file).
 	docker run --rm -u $$(id -u):$$(id -g) -v "$(CURDIR):/work" -w /work \
 		jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs --chart-search-root=charts
 
@@ -49,3 +52,13 @@ docs:
 docs-check: docs
 	# Fails if `make docs` produced changes — i.e. the committed README is stale.
 	git diff --exit-code charts/tt-operator/README.md
+
+.PHONY: unittest
+unittest: helm-deps
+	# Run the helm-unittest contract suites in charts/tt-operator/tests/.
+	# Requires the helm-unittest plugin; install pinned if absent. Needs a
+	# prior `helm registry login ghcr.io` for the OCI subchart pull (helm-deps).
+	# HELM_UNITTEST_VERSION comes from hack/tool-versions.env (see top of file).
+	helm plugin list | grep -q unittest || \
+		helm plugin install https://github.com/helm-unittest/helm-unittest --version $(HELM_UNITTEST_VERSION)
+	helm unittest --strict charts/tt-operator
