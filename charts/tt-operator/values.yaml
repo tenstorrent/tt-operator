@@ -16,6 +16,11 @@
 #
 # Everything below is wired into one of the subcharts.
 
+# Single fan-out for pull secrets. No-op until in-house subcharts adopt
+# `.Values.global.imagePullSecrets` — use per-subchart overrides until then.
+global:
+  imagePullSecrets: []
+
 node-feature-discovery:
   enabled: true
   # Restrict NFD to the PCI source only. All we need is the
