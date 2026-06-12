@@ -23,3 +23,11 @@ rules:
   indentation:
     spaces: consistent
     indent-sequences: consistent
+  # Allow the compact flow style used in dev RBAC manifests, e.g.
+  # `roleRef: { apiGroup: ..., kind: ... }` — one space inside the delimiters.
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
