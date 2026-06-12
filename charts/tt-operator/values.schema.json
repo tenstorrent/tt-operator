@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "tt-operator umbrella chart values",
+  "description": "Permissive schema for the umbrella's own values. It type-checks only the fields tt-operator explicitly owns or forwards to subcharts (the toggles, namespaces, and overrides documented in values.yaml). additionalProperties is intentionally left open at every level: Helm coalesces each subchart's default values into these same sections at render time, and those pass-through values must validate against the subchart's own schema, not this one. The goal here is to turn typos like `enabled: \"true\"` (string) or a misspelled namespace type into a hard `helm lint`/`helm install` failure, without fighting subchart passthrough.",
+  "type": "object",
+  "properties": {
+    "node-feature-discovery": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "tt-k8s-driver-manager": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "tt-fabric-manager": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fullnameOverride": { "type": "string" }
+      }
+    },
+    "tt-dra-driver": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "kubeletPlugin": {
+          "type": "object",
+          "properties": {
+            "fabricManagerAgentAddress": { "type": "string" }
+          }
+        }
+      }
+    },
+    "tt-telemetry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "namespace": { "type": "string" },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          }
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "fabric_manager_address": { "type": "string" }
+          }
+        }
+      }
+    },
+    "jobset": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "kubepmix": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "namespace": { "type": "string" }
+      }
+    }
+  }
+}

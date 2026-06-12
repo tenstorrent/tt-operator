@@ -1,0 +1,25 @@
+# yamllint config for tt-operator. Scope: hand-authored YAML (Chart.yaml,
+# values.yaml, workflow + composite-action definitions, dev manifests).
+# Helm templates are Go-templated text, not valid YAML, and the vendored
+# CRD bundle is machine-generated — both are excluded.
+extends: default
+
+ignore: |
+  charts/tt-operator/templates/
+  charts/tt-operator/crds/
+
+rules:
+  # Chart.yaml's description is one long intentional line.
+  line-length: disable
+  # Helm/values files don't lead with a `---` document marker.
+  document-start: disable
+  # `on:` in workflow files is a key, not a boolean — don't flag it.
+  truthy:
+    check-keys: false
+  # values.yaml aligns prose comment blocks to the values they document.
+  comments-indentation: disable
+  comments:
+    min-spaces-from-content: 1
+  indentation:
+    spaces: consistent
+    indent-sequences: consistent
