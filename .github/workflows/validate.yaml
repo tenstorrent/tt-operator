@@ -177,3 +177,22 @@ jobs:
             echo "::error::Vendored CRDs are stale — run hack/refresh-vendored-crds.sh and commit the result"
             exit 1
           }
+
+  docs-coherence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: charts/tt-operator/README.md is current
+        # helm-docs regenerates the chart README from Chart.yaml + the `# --`
+        # annotations in values.yaml, via README.md.gotmpl. No cluster or GHCR
+        # auth needed — it reads chart metadata only. Pinned image; keep the
+        # version in sync with the Makefile's HELM_DOCS_VERSION.
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work \
+            jnorwood/helm-docs:v1.14.2 helm-docs --chart-search-root=charts
+          if ! git diff --exit-code charts/tt-operator/README.md; then
+            echo "::error::charts/tt-operator/README.md is stale — run 'make docs' and commit the result"
+            echo "===== generated charts/tt-operator/README.md ====="
+            cat charts/tt-operator/README.md
+            exit 1
+          fi

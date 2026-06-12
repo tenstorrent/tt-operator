@@ -15,8 +15,15 @@
 #     training Jobs; requires cert-manager pre-installed)
 #
 # Everything below is wired into one of the subcharts.
+#
+# Note for editors: the `# --` lines are helm-docs annotations that feed the
+# generated charts/tt-operator/README.md values table. The longer prose above
+# each one is for source readers and is not pulled into the table. After
+# editing values here, run `make docs` and commit the regenerated README — CI
+# fails if it is stale.
 
 node-feature-discovery:
+  # -- (bool) Install node-feature-discovery so Tenstorrent nodes get the feature.node.kubernetes.io/pci-1200_1e52.present label.
   enabled: true
   # Restrict NFD to the PCI source only. All we need is the
   # pci-<class>_<vendor>.present label for Tenstorrent devices — running
@@ -25,7 +32,9 @@ node-feature-discovery:
   worker:
     config:
       core:
+        # -- (list) NFD feature sources to enable. Restricted to PCI — the only source needed to detect Tenstorrent devices.
         featureSources: ["pci"]
+        # -- (list) NFD label sources to enable. Restricted to PCI to avoid the CPU/memory cost and label clutter of the full source set.
         labelSources: ["pci"]
 
 # tt-k8s-driver-manager owns the controllers, CRDs, and per-node images that
@@ -33,6 +42,7 @@ node-feature-discovery:
 # Set tt-k8s-driver-manager.enabled=false to opt out (e.g. if you only want
 # NFD labelling and intend to manage drivers some other way).
 tt-k8s-driver-manager:
+  # -- (bool) Install tt-k8s-driver-manager (controllers, CRDs, and per-node images for tt-kmd, firmware flashing, and tt-smi). Disable to manage drivers yourself.
   enabled: true
 
 # tt-fabric-manager (TTFM) owns inter-card / inter-host fabric topology and
@@ -48,11 +58,13 @@ tt-k8s-driver-manager:
 #   - ingress.enabled / ingress.host: review whether ingress fits your
 #     environment, and retarget the hostname if so.
 tt-fabric-manager:
+  # -- (bool) Install tt-fabric-manager (TTFM): inter-card/inter-host fabric topology + GetTopology gRPC. Opt-in; most single-node / non-Galaxy setups don't need it.
   enabled: true
   # Drop the umbrella's release prefix so Service names render as
   # `tt-fabric-manager-{controller,agent}` instead of
   # `tt-operator-tt-fabric-manager-{controller,agent}`. Matches cert-manager
   # / NVIDIA-GPU-operator naming (platform component, not release identity).
+  # -- (string) Drop the release prefix so TTFM Service names render as tt-fabric-manager-{controller,agent}.
   fullnameOverride: tt-fabric-manager
 
 # tt-dra-driver is a per-node kubelet plugin that publishes Tenstorrent
@@ -66,6 +78,7 @@ tt-fabric-manager:
 #   - DynamicResourceAllocation feature gate enabled on kube-apiserver and
 #     kubelet on every node (DRA is GA in 1.34, feature-gated in 1.33).
 tt-dra-driver:
+  # -- (bool) Install tt-dra-driver (DRA kubelet plugin publishing devices as ResourceSlices). Requires k8s 1.33+, tt-fabric-manager.enabled, and the DynamicResourceAllocation feature gate.
   enabled: true
 
   # Point at the in-cluster TTFM agent Service. Subchart default is
@@ -76,6 +89,7 @@ tt-dra-driver:
   # Service uses `internalTrafficPolicy: Local`, so DNS resolves to the
   # local node's agent pod.
   kubeletPlugin:
+    # -- (string) Address of the in-cluster TTFM agent Service the DRA plugin calls for GetTopology.
     fabricManagerAgentAddress: tt-fabric-manager-agent.tt-operator-system.svc.cluster.local:50053
 
 # tt-telemetry collects Tenstorrent device telemetry and exports it via a
@@ -91,7 +105,9 @@ tt-dra-driver:
 # (podMonitor.namespace is intentionally left at upstream default
 # `monitoring`, where Prometheus typically scrapes from.)
 tt-telemetry:
+  # -- (bool) Install tt-telemetry (device telemetry → Prometheus endpoint + web GUI). Alpha software.
   enabled: true
+  # -- (string) Namespace for tt-telemetry resources. The subchart hardcodes this (no Release.Namespace fallback), so match your install namespace.
   namespace: tt-operator-system
 
   # Pin the published org-namespace image. The subchart's own default
@@ -99,7 +115,9 @@ tt-telemetry:
   # leaks into umbrella consumers if not overridden here. Keep the tag
   # in lockstep with the tt-telemetry subchart version in Chart.yaml.
   image:
+    # -- (string) tt-telemetry image repository, pinned to the published org-namespace image.
     repository: ghcr.io/tenstorrent/tt-telemetry
+    # -- (string) tt-telemetry image tag. Keep in lockstep with the tt-telemetry subchart version in Chart.yaml.
     tag: "0.0.10-alpha"
 
   # Route topology resolution through the in-cluster TTFM controller.
@@ -109,6 +127,7 @@ tt-telemetry:
   # disabled (or no FSD staged) can keep the address — collectors that
   # fail GetTopology fall back to monitoring all Ethernet channels.
   config:
+    # -- (string) Address of the in-cluster TTFM controller used for topology resolution.
     fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
 
   # Scope the collector DaemonSet to TT-equipped nodes AND let operators
@@ -121,6 +140,7 @@ tt-telemetry:
   #
   # `pci-1200_1e52.present` is applied by NFD (umbrella default), which we
   # rely on as the canonical "Tenstorrent-equipped node" signal.
+  # -- (object) Collector DaemonSet nodeAffinity — schedule on TT-equipped nodes and honor the tenstorrent.com/deploy.tt-telemetry drain gate.
   daemonset:
     affinity:
       nodeAffinity:
@@ -143,6 +163,7 @@ tt-telemetry:
 # namespace. There's no per-subchart namespace knob to expose here without
 # forking jobset upstream.
 jobset:
+  # -- (bool) Install JobSet (kubernetes-sigs/jobset) for grouped multi-node Job lifecycle. No external prereqs.
   enabled: true
 
 # kubepmix is a mutating webhook that injects PMIx env vars into Jobs
@@ -159,5 +180,7 @@ jobset:
 # The chart creates the namespace if it differs from the release ns;
 # otherwise it reuses the existing one.
 kubepmix:
+  # -- (bool) Install the kubepmix mutating webhook (injects PMIx env into multi-node training Jobs). Requires cert-manager pre-installed.
   enabled: true
+  # -- (string) Namespace for the kubepmix webhook resources. Defaults to a dedicated kube-pmix namespace; set to your release namespace to consolidate.
   namespace: kube-pmix
