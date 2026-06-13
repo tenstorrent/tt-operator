@@ -1,0 +1,111 @@
+name: Set up RKE2 single-node cluster
+description: |
+  Installs RKE2 server with DRA feature gate, waits for the apiserver to
+  be Ready, drops `kubectl` and `helm` into the runner's PATH, and
+  installs cert-manager. Intended for tests that need a real k8s control
+  plane (not kind) — e.g. the tt-operator integration test on the N150
+  runner. Leaves $KUBECONFIG pointing at the rke2.yaml.
+
+inputs:
+  rke2-version:
+    description: Specific RKE2 version (skips channel-resolver lookup; pin for CI reproducibility).
+    required: false
+    default: v1.36.1+rke2r2
+  cert-manager-version:
+    description: cert-manager helm chart version. cert-manager is installed because downstream workloads (kubepmix) need it for webhook TLS.
+    required: false
+    default: v1.16.2
+  install-cert-manager:
+    description: Whether to install cert-manager. Set to "false" to skip.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install RKE2 server
+      shell: bash
+      env:
+        INSTALL_RKE2_VERSION: ${{ inputs.rke2-version }}
+      run: |
+        set -eux
+        curl -sfL https://get.rke2.io -o /tmp/rke2-install.sh
+        sudo -E bash /tmp/rke2-install.sh
+        # tarball install drops the unit under /usr/local/lib/systemd/system,
+        # not /etc/systemd/system — both are valid systemd unit dirs.
+        test -f /usr/local/lib/systemd/system/rke2-server.service
+        /usr/local/bin/rke2 --version
+        # Containerd inside rke2 needs proxy env to be on its process
+        # tree for in-cluster image pulls (jobset on registry.k8s.io,
+        # tt operator images on ghcr.io, etc.). Drop it into the systemd
+        # unit's env so the proxy traversal works for every CRI pull.
+        sudo mkdir -p /etc/systemd/system/rke2-server.service.d
+        NPROXY="127.0.0.1,localhost,::1,10.0.0.0/8,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,${no_proxy:-}"
+        sudo tee /etc/systemd/system/rke2-server.service.d/proxy.conf >/dev/null <<EOF
+        [Service]
+        Environment="HTTPS_PROXY=${HTTPS_PROXY:-${https_proxy:-}}"
+        Environment="HTTP_PROXY=${HTTP_PROXY:-${http_proxy:-}}"
+        Environment="NO_PROXY=${NPROXY}"
+        Environment="https_proxy=${https_proxy:-${HTTPS_PROXY:-}}"
+        Environment="http_proxy=${http_proxy:-${HTTP_PROXY:-}}"
+        Environment="no_proxy=${NPROXY}"
+        EOF
+        sudo systemctl daemon-reload
+        sudo systemctl enable rke2-server
+        # --no-block: systemd Type=notify's 30s deadline is too tight
+        # for rke2's first start (etcd init + image load). We wait on
+        # the real ready signal — rke2.yaml on disk — instead.
+        sudo systemctl start --no-block rke2-server
+        sudo timeout 600 bash -c 'until [ -s /etc/rancher/rke2/rke2.yaml ]; do sleep 5; done'
+        mkdir -p "$HOME/.kube"
+        sudo install -m 0600 -o "$USER" -g "$USER" /etc/rancher/rke2/rke2.yaml "$HOME/.kube/config"
+        # Upstream kubectl from dl.k8s.io. rke2 stages its own under a
+        # hashed dir; simpler to install our own at a known path.
+        KCTL_VER=$(curl -sfL https://dl.k8s.io/release/stable.txt)
+        curl -sfL -o /tmp/kubectl "https://dl.k8s.io/release/${KCTL_VER}/bin/linux/amd64/kubectl"
+        sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+        kubectl version --client
+        echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
+        # Apiserver, kubelet (on the node's KVM bridge IP 10.0.2.x),
+        # pod CIDR, service CIDR, and svc DNS must never traverse the
+        # squid proxy. The default $no_proxy on the runner doesn't
+        # cover any of these — add them.
+        echo "NO_PROXY=127.0.0.1,localhost,::1,10.0.0.0/8,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,${no_proxy:-}" >> "$GITHUB_ENV"
+        echo "no_proxy=127.0.0.1,localhost,::1,10.0.0.0/8,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,${no_proxy:-}" >> "$GITHUB_ENV"
+
+    - name: Wait for apiserver + node Ready
+      shell: bash
+      run: |
+        set -eux
+        timeout 300 bash -c 'until kubectl get --raw=/readyz >/dev/null 2>&1; do sleep 5; done'
+        # /readyz can come up before the kubelet registers its Node
+        # object — `kubectl wait --all` errors with "no matching
+        # resources" in that window. Block until at least one Node
+        # exists, then wait for Ready on it.
+        timeout 180 bash -c 'until [ "$(kubectl get nodes --no-headers 2>/dev/null | wc -l)" -gt 0 ]; do sleep 3; done'
+        kubectl wait --for=condition=Ready node --all --timeout=5m
+        kubectl get nodes -o wide
+
+    - name: Install helm
+      shell: bash
+      run: |
+        set -eux
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        helm version
+
+    - name: Install cert-manager
+      if: ${{ inputs.install-cert-manager == 'true' }}
+      shell: bash
+      env:
+        CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+      run: |
+        set -eux
+        helm repo add jetstack https://charts.jetstack.io
+        helm repo update
+        helm install cert-manager jetstack/cert-manager \
+          -n cert-manager --create-namespace \
+          --set crds.enabled=true \
+          --version "$CERT_MANAGER_VERSION"
+        kubectl -n cert-manager rollout status deploy/cert-manager --timeout=3m
+        kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=3m
+        kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=3m
