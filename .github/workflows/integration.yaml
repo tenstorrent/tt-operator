@@ -1,0 +1,122 @@
+name: integration
+
+# Live-install integration tests for the tt-k8s-driver-manager subchart as the
+# umbrella deploys it. Tier 1 (this job): kind, every PR — install the umbrella
+# with only the driver manager enabled and assert its install-time and
+# runtime-created resources behave on a real cluster, without Tenstorrent
+# hardware. Tier 2 (self-hosted hardware) will be added as a separate gated job.
+#
+# This is deeper than ci.yaml's smoke-install (which only checks install +
+# image pulls); it shares the kind-bootstrap composite with it.
+#
+# AUTH NOTE: pulls the tt-k8s-driver-manager OCI subchart + images with the
+# GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read). See
+# ci.yaml's header. TODO: drop once cross-repo access is granted.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  driver-manager-kind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+
+      # Creates kind (tt-integration), side-loads the driver-manager images at
+      # the Chart.yaml-pinned tag, fakes the NFD tt-present label on every node,
+      # and builds chart deps.
+      - name: Bootstrap kind + chart deps
+        uses: ./.github/actions/kind-bootstrap
+        with:
+          cluster-name: tt-integration
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+
+      - name: Install umbrella (driver manager only)
+        # Everything else needs prereqs absent in kind (cert-manager, real
+        # k8s>=1.33 + DRA, cluster-specific config) or is out of scope. The
+        # tt-present node label is faked by kind-bootstrap.
+        run: |
+          helm install tt-operator charts/tt-operator \
+            -n tt-operator-system --create-namespace \
+            --set node-feature-discovery.enabled=false \
+            --set kubepmix.enabled=false \
+            --set tt-fabric-manager.enabled=false \
+            --set tt-dra-driver.enabled=false \
+            --set tt-telemetry.enabled=false \
+            --set jobset.enabled=false
+
+      - name: CRDs are installed
+        run: |
+          kubectl get crd tenstorrentdriverpolicies.driver.tenstorrent.com
+          kubectl get crd tenstorrentfirmwarepolicies.firmware.tenstorrent.com
+
+      - name: Controller + installer RBAC exist
+        # Match by name substring so this is robust to the release-name prefix
+        # and the exact -controller/-manager/-installer suffixes.
+        run: |
+          kubectl get clusterrole -o name | grep -q 'tt-k8s-driver-manager'
+          kubectl get clusterrolebinding -o name | grep -q 'tt-k8s-driver-manager'
+          kubectl -n tt-operator-system get sa -o name | grep -q 'tt-k8s-driver-manager'
+
+      - name: Controller Deployment becomes Available
+        run: |
+          sleep 10
+          kubectl -n tt-operator-system get deploy
+          # `wait --all` succeeds vacuously on an empty set — make sure the
+          # controller Deployment actually exists first.
+          test "$(kubectl -n tt-operator-system get deploy -o name | wc -l | tr -d ' ')" -ge 1
+          kubectl -n tt-operator-system wait --for=condition=Available --timeout=3m deploy --all
+
+      - name: Controller creates the installer DaemonSet for the labeled node
+        # kind-bootstrap faked feature.node.kubernetes.io/pci-1200_1e52.present
+        # on every node; the controller should reconcile those nodes and create
+        # the per-node installer DaemonSet at runtime (not rendered by Helm).
+        run: |
+          found=""
+          for _ in $(seq 1 36); do
+            if [ "$(kubectl -n tt-operator-system get ds -o name | wc -l | tr -d ' ')" -ge 1 ]; then
+              found=yes; break
+            fi
+            sleep 5
+          done
+          kubectl -n tt-operator-system get ds || true
+          if [ -z "$found" ]; then
+            echo "::error::controller did not create an installer DaemonSet within ~3m"
+            exit 1
+          fi
+
+      - name: No ImagePullBackOff anywhere in the namespace
+        # The DS pods pull the builder/flasher images (side-loaded by
+        # kind-bootstrap). They may CrashLoop afterwards (no kernel build tree
+        # in kind) — that's expected; we only police image pulls here, across
+        # both regular and init containers.
+        run: |
+          sleep 30
+          waiting=$(kubectl get pods -n tt-operator-system -o json | jq -r \
+            '[.items[].status | ((.containerStatuses // []) + (.initContainerStatuses // []))[] | .state.waiting.reason] | map(select(. != null)) | join(",")')
+          echo "Waiting reasons across namespace: $waiting"
+          if echo "$waiting" | grep -Eq "ImagePullBackOff|ErrImagePull"; then
+            echo "::error::missing image somewhere in the namespace"
+            exit 1
+          fi
+          echo "OK"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl -n tt-operator-system describe pods
+          kubectl -n tt-operator-system get ds,deploy,sa
+          kubectl get crd,clusterrole,clusterrolebinding -o name | grep tenstorrent || true
+          kubectl get events -n tt-operator-system --sort-by=.lastTimestamp | tail -50
