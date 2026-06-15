@@ -40,26 +40,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: actionlint (workflow files)
-        # Pinned image; also runs shellcheck on workflow `run:` blocks.
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
-
-      - name: shellcheck (hack scripts)
-        # shellcheck is preinstalled on ubuntu-latest runners.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: pre-commit (yamllint, actionlint, shellcheck, file hygiene)
+        # Runs the pinned hooks in .pre-commit-config.yaml — identical to what
+        # `make lint` / the local commit hook run, so local↔CI versions match.
+        # actionlint runs via Docker (available on the runner).
         run: |
-          mapfile -t scripts < <(git ls-files '*.sh')
-          if [ ${#scripts[@]} -eq 0 ]; then
-            echo "no shell scripts to lint"; exit 0
-          fi
-          printf 'linting: %s\n' "${scripts[@]}"
-          shellcheck "${scripts[@]}"
-
-      - name: yamllint (chart + dev manifests)
-        # pipx is preinstalled on ubuntu-latest; config lives in .yamllint.yaml.
-        run: |
-          pipx install yamllint
-          yamllint .
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
 
   helm-lint-strict:
     runs-on: ubuntu-latest

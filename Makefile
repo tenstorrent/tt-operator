@@ -33,6 +33,15 @@ helm-deps:
 helm-lint:
 	helm lint charts/tt-operator
 
+.PHONY: lint
+lint:
+	# Runs the pinned pre-commit hooks (yamllint, actionlint, shellcheck, file
+	# hygiene) over all files — the same set CI's lint-tools job runs.
+	# One-time setup: pipx install pre-commit  (or: brew install pre-commit),
+	# then optionally `pre-commit install` to run them on every git commit.
+	# The actionlint hook runs via Docker, so the daemon must be up.
+	pre-commit run --all-files
+
 .PHONY: helm-install
 helm-install: helm-deps
 	helm upgrade --install tt-operator charts/tt-operator \
