@@ -1,10 +1,10 @@
-name: integration
+name: integration-kind
 
 # Live-install integration tests for the tt-k8s-driver-manager subchart as the
 # umbrella deploys it. Tier 1 (this job): kind, every PR — install the umbrella
 # with only the driver manager enabled and assert its install-time and
 # runtime-created resources behave on a real cluster, without Tenstorrent
-# hardware. Tier 2 (self-hosted hardware) will be added as a separate gated job.
+# hardware. Tier 2 (self-hosted hardware) is covered by integration-rke2.yaml.
 #
 # This is deeper than ci.yaml's smoke-install (which only checks install +
 # image pulls); it shares the kind-bootstrap composite with it.
@@ -23,7 +23,7 @@ permissions:
   packages: read
 
 concurrency:
-  group: integration-${{ github.ref }}
+  group: integration-kind-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -43,17 +43,20 @@ jobs:
           ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
 
       - name: Install umbrella (driver manager only)
-        # Everything else needs prereqs absent in kind (cert-manager, real
-        # k8s>=1.33 + DRA, cluster-specific config) or is out of scope. The
-        # tt-present node label is faked by kind-bootstrap.
-        run: |
-          helm install tt-operator charts/tt-operator \
-            -n tt-operator-system --create-namespace \
-            --set node-feature-discovery.enabled=false \
-            --set kubepmix.enabled=false \
-            --set tt-fabric-manager.enabled=false \
-            --set tt-dra-driver.enabled=false \
-            --set tt-telemetry.enabled=false \
+        # Cluster-agnostic install action (shared with integration-rke2.yaml).
+        # Everything but the driver manager needs prereqs absent in kind
+        # (cert-manager, real k8s>=1.33 + DRA, cluster-specific config) or is out
+        # of scope. Images are side-loaded by kind-bootstrap, so no pull secret;
+        # the tt-present node label is faked by kind-bootstrap.
+        uses: ./.github/actions/install-tt-operator
+        with:
+          create-namespace: "true"
+          extra-args: >-
+            --set node-feature-discovery.enabled=false
+            --set kubepmix.enabled=false
+            --set tt-fabric-manager.enabled=false
+            --set tt-dra-driver.enabled=false
+            --set tt-telemetry.enabled=false
             --set jobset.enabled=false
 
       - name: CRDs are installed

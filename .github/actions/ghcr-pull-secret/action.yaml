@@ -1,0 +1,36 @@
+name: Stage GHCR pull secret
+description: |
+  Create the install namespace and a docker-registry pull secret for ghcr.io.
+  RKE2 pulls the private driver-manager images at runtime (no kind-style
+  side-load); without this secret the controller + builder pods 401 and land in
+  ImagePullBackOff. The umbrella wires this secret into each subchart's
+  ServiceAccounts via .imagePullSecrets (see install-tt-operator).
+
+inputs:
+  namespace:
+    description: Namespace to create and stage the secret in.
+    default: tt-operator-system
+  secret-name:
+    description: Name of the docker-registry secret.
+    default: tt-operator-image-pulltoken
+  ghcr-username:
+    description: GHCR username for the PAT.
+    default: kluongTT
+  ghcr-password:
+    description: GHCR token (GHCR_PULL_PAT) with read:packages.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -eu
+        kubectl create namespace "${{ inputs.namespace }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create secret docker-registry "${{ inputs.secret-name }}" \
+          -n "${{ inputs.namespace }}" \
+          --docker-server=ghcr.io \
+          --docker-username="${{ inputs.ghcr-username }}" \
+          --docker-password="${{ inputs.ghcr-password }}" \
+          --dry-run=client -o yaml | kubectl apply -f -

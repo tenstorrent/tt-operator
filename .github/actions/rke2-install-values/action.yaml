@@ -1,0 +1,80 @@
+name: Generate RKE2 install values
+description: |
+  Write the umbrella values file for the RKE2 hardware integration job and
+  return its path. RKE2-specific concerns live here (not in the agnostic
+  install-tt-operator): the GHCR pull secret is wired into every subchart, and
+  the runner VM's proxy is resolved to a routable IP and propagated into the
+  builder pods the controller spawns (the inner cluster's DNS can't resolve the
+  outer cluster's proxy Service name).
+
+inputs:
+  image-pull-secret:
+    description: Name of the docker-registry secret staged by ghcr-pull-secret.
+    default: tt-operator-image-pulltoken
+  output-file:
+    description: Path to write the generated values file to.
+    default: /tmp/rke2-tt-operator-values.yaml
+
+outputs:
+  values-file:
+    description: Path to the generated values file (feed to install-tt-operator).
+    value: ${{ steps.gen.outputs.values-file }}
+
+runs:
+  using: composite
+  steps:
+    - id: gen
+      shell: bash
+      run: |
+        set -ex
+        SECRET='${{ inputs.image-pull-secret }}'
+        OUT='${{ inputs.output-file }}'
+        # Resolve the proxy Service name to an IP the inner RKE2 cluster routes to.
+        PROXY_HOST=$(echo "${HTTPS_PROXY:-${https_proxy:-}}" | sed -E 's,^https?://,,; s,:.*,,')
+        PROXY_PORT=$(echo "${HTTPS_PROXY:-${https_proxy:-}}" | sed -E 's,.*:,,')
+        POD_HTTPS_PROXY=""
+        if [ -n "${PROXY_HOST}" ]; then
+          PROXY_IP=$(getent hosts "${PROXY_HOST}" | awk '{print $1; exit}')
+          [ -n "${PROXY_IP}" ] || { echo "FAIL: couldn't resolve proxy host ${PROXY_HOST}"; exit 1; }
+          POD_HTTPS_PROXY="http://${PROXY_IP}:${PROXY_PORT}"
+        fi
+        echo "pod proxy = ${POD_HTTPS_PROXY:-<none>}"
+        cat > "${OUT}" <<EOF
+        tt-k8s-driver-manager:
+          imagePullSecrets:
+            - name: ${SECRET}
+          # Propagate proxy env controller -> spawned builder pods: the builder
+          # git-clones tt-kmd source on a cache miss and can't reach github.com
+          # without the proxy (tt-k8s-driver-manager#31).
+          controller:
+            extraEnv:
+              - name: HTTPS_PROXY
+                value: "${POD_HTTPS_PROXY}"
+              - name: HTTP_PROXY
+                value: "${POD_HTTPS_PROXY}"
+              - name: NO_PROXY
+                value: "${NO_PROXY:-${no_proxy:-}}"
+        tt-fabric-manager:
+          imagePullSecrets:
+            - name: ${SECRET}
+        tt-telemetry:
+          imagePullSecrets:
+            - name: ${SECRET}
+          podMonitor:
+            enabled: false
+          aggregator:
+            enabled: false
+          config:
+            # No FSD staged on the runner -> skip the FM lookup that would
+            # otherwise time out and trip the watchdog. Empty address makes the
+            # collector monitor all Ethernet channels directly.
+            fabric_manager_address: ""
+        tt-dra-driver:
+          imagePullSecrets:
+            - name: ${SECRET}
+        kubepmix:
+          imagePullSecrets:
+            - name: ${SECRET}
+        EOF
+        cat "${OUT}"
+        echo "values-file=${OUT}" >> "$GITHUB_OUTPUT"

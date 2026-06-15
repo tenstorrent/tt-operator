@@ -1,0 +1,56 @@
+name: Verify install landed
+description: |
+  Post-install health on real hardware: the controller Deployments reach
+  Available, NFD finds the Tenstorrent PCI device and labels the node, and no
+  pod is wedged on a missing image. Runs before the driver is (re)installed —
+  the driver-manager DS pod may not be Ready yet (no kmd), which is fine; we
+  only police image pulls here.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - name: Controller Deployments Available
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        for _ in $(seq 1 20); do
+          [ "$(kubectl -n "$NS" get deployments --no-headers 2>/dev/null | wc -l)" -gt 0 ] && break
+          sleep 3
+        done
+        kubectl -n "$NS" get deployments
+        kubectl -n "$NS" wait --for=condition=Available --timeout=5m deployments --all
+
+    - name: NFD labeled the node
+      shell: bash
+      run: |
+        set -ex
+        n=0
+        for _ in $(seq 1 24); do
+          n=$(kubectl get nodes -l feature.node.kubernetes.io/pci-1200_1e52.present=true -o name | wc -l)
+          [ "$n" -gt 0 ] && break
+          sleep 5
+        done
+        kubectl get nodes --show-labels
+        [ "$n" -gt 0 ] || { echo "FAIL: NFD didn't label any node"; exit 1; }
+
+    - name: No ImagePullBackOff
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        sleep 20
+        kubectl -n "$NS" get pods -o wide
+        waiting=$(kubectl get pods -n "$NS" -o json | jq -r \
+          '[.items[].status | ((.containerStatuses // []) + (.initContainerStatuses // []))[] | .state.waiting.reason] | map(select(. != null)) | join(",")')
+        echo "Container waiting reasons: ${waiting:-<none>}"
+        if echo "$waiting" | grep -Eq "ImagePullBackOff|ErrImagePull"; then
+          echo "FAIL: image pull error in namespace"
+          kubectl describe pods -n "$NS"
+          exit 1
+        fi

@@ -1,0 +1,7 @@
+# actionlint config. Declares the custom self-hosted runner labels used by the
+# hardware integration job (integration-rke2.yaml) so actionlint doesn't flag
+# them as unknown `runs-on` labels.
+self-hosted-runner:
+  labels:
+    - tt-ubuntu-2204-n150-stable
+    - tt-ubuntu-2204-bh-loudbox-viommu-stable

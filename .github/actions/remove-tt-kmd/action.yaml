@@ -1,0 +1,30 @@
+name: Remove preloaded tt-kmd
+description: |
+  Remove the tt-kmd module AND its DKMS install from the runner so the
+  driver-manager builder takes ownership of the install path (compile from
+  source → insmod → label) instead of dropping into host-managed mode. The
+  runner qcow2 boots with tt-kmd loaded and DKMS-installed; both the module and
+  the two DKMS signals (metadata + source tree) have to go.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -eux
+        [ "$(cat /sys/module/tenstorrent/refcnt)" = "0" ] \
+          || { echo "FAIL: tt-kmd refcnt > 0 at boot"; exit 1; }
+        sudo rmmod tenstorrent
+        # /var/lib/dkms/tenstorrent (metadata) + /usr/src/tenstorrent-<version>/
+        # (source) are both signals the builder checks. Drop both plus the
+        # installed .ko so depmod/udev can't auto-load it again.
+        sudo rm -rf /var/lib/dkms/tenstorrent
+        sudo rm -rf /usr/src/tenstorrent-*
+        sudo find "/lib/modules/$(uname -r)" -name 'tenstorrent.ko*' -delete
+        sudo depmod -a
+        ! [ -e /sys/module/tenstorrent/version ]
+        ! ls /dev/tenstorrent/0 2>/dev/null
+        ! [ -d /var/lib/dkms/tenstorrent ]
+        ! compgen -G "/usr/src/tenstorrent-*" >/dev/null
+        ! sudo modprobe tenstorrent 2>/dev/null
+        echo "OK: tt-kmd + DKMS install removed"

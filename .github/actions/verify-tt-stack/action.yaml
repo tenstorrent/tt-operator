@@ -1,0 +1,47 @@
+name: Verify tt-fabric-manager + tt-telemetry
+description: |
+  Now that the operator-driven kmd install has finished and /dev/tenstorrent is
+  back, confirm the per-node agents come up: the tt-fabric-manager agent and
+  tt-telemetry collector DaemonSets reach Ready, and tt-telemetry's /metrics
+  endpoint serves Prometheus exposition with tt_driver_initialized=1 (the signal
+  that the UMD round-trip to the device succeeded).
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - name: tt-fabric-manager + tt-telemetry DaemonSets Ready
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        kubectl -n "$NS" rollout status ds/tt-fabric-manager-agent --timeout=4m
+        kubectl -n "$NS" rollout status ds/tt-telemetry-daemonset --timeout=4m
+        kubectl -n "$NS" get pods -l app.kubernetes.io/name=tt-fabric-manager -o wide
+        kubectl -n "$NS" get pods -l app=tt-telemetry -o wide
+
+    - name: tt-telemetry /metrics — tt_driver_initialized reaches 1
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        POD=$(kubectl -n "$NS" get pods -l app=tt-telemetry -o jsonpath='{.items[0].metadata.name}')
+        test -n "$POD"
+        kubectl -n "$NS" port-forward "pod/$POD" 18080:8080 >/tmp/pf.log 2>&1 &
+        PF_PID=$!
+        trap 'kill $PF_PID 2>/dev/null || true' EXIT
+        # --noproxy bypasses squid for 127.0.0.1.
+        timeout 30 bash -c 'until curl -sf --noproxy "*" -o /dev/null http://127.0.0.1:18080/metrics; do sleep 1; done'
+        timeout 480 bash -c '
+          while true; do
+            curl -sf --noproxy "*" http://127.0.0.1:18080/metrics > /tmp/metrics.txt
+            awk "/^tt_driver_initialized([{ ])/ { if (\$NF+0 == 1) found=1 } END { exit !found }" /tmp/metrics.txt && exit 0
+            sleep 5
+          done'
+        grep -E "^tt_driver_initialized" /tmp/metrics.txt | head -5
+        grep -qE '^# (HELP|TYPE) ' /tmp/metrics.txt
+        echo "OK: tt_driver_initialized=1; /metrics served $(wc -l < /tmp/metrics.txt) lines"
