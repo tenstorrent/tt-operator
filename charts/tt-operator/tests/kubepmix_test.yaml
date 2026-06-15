@@ -15,10 +15,14 @@ tests:
     asserts:
       - hasDocuments:
           count: 7
-      - containsDocument:
-          kind: Namespace
-          apiVersion: v1
-          name: kube-pmix
+      # Select the lone Namespace doc rather than a bare containsDocument
+      # (which under --strict must match every one of the 7 docs).
+      - equal:
+          path: metadata.name
+          value: kube-pmix
+        documentSelector:
+          path: kind
+          value: Namespace
 
   - it: renders nothing when disabled
     set:

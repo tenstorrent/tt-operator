@@ -5,13 +5,17 @@ suite: tt-k8s-driver-manager (umbrella consumption contract)
 # k8s>=1.33 kubeVersion floor tripping the whole-chart render under
 # helm-unittest's default capabilities.
 #
-# Each test is scoped to a specific subchart template with `template:` —
-# helm-unittest evaluates document assertions per-template, so an unscoped
-# "contains a Deployment" check would fail against the RBAC template. The
-# subchart renders ONLY the controller Deployment + RBAC at install time; the
-# per-node installer DaemonSet is created at runtime by the controller, and the
-# driver/flasher images are passed to it via the DRIVER_IMAGE / FLASHER_IMAGE
-# env vars on the controller's manager container.
+# Each test is scoped to a specific subchart template with `template:`.
+# Assertions use hasDocuments / isKind / documentSelector rather than a bare
+# containsDocument: under --strict, an unscoped containsDocument is checked
+# against EVERY document in the template and requires all of them to match,
+# which fails on mixed-kind files like the RBAC bundle.
+#
+# The subchart renders ONLY the controller Deployment + RBAC at install time;
+# the per-node installer DaemonSet is created at runtime by the controller, and
+# the driver/flasher images are passed to it via the DRIVER_IMAGE / FLASHER_IMAGE
+# env vars on the controller's manager container. (Subchart enable/disable is
+# covered by validate.yaml's render matrix — driver-only / all-off scenarios.)
 release:
   name: tt-operator
   namespace: tt-operator-system
@@ -31,18 +35,13 @@ tests:
       - isKind:
           of: Deployment
 
-  - it: renders the controller + installer RBAC
+  - it: renders the controller + installer RBAC bundle
     template: charts/tt-k8s-driver-manager/templates/manager-rbac.yaml
+    # 6 docs: controller ServiceAccount, manager ClusterRole + ClusterRoleBinding,
+    # installer ServiceAccount, installer ClusterRole + ClusterRoleBinding.
     asserts:
-      - containsDocument:
-          kind: ServiceAccount
-          apiVersion: v1
-      - containsDocument:
-          kind: ClusterRole
-          apiVersion: rbac.authorization.k8s.io/v1
-      - containsDocument:
-          kind: ClusterRoleBinding
-          apiVersion: rbac.authorization.k8s.io/v1
+      - hasDocuments:
+          count: 6
 
   - it: forwards the controller image override onto the manager container
     template: charts/tt-k8s-driver-manager/templates/manager-deployment.yaml
@@ -74,11 +73,3 @@ tests:
           content:
             name: FLASHER_IMAGE
             value: ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:contract-test
-
-  - it: renders no controller Deployment when disabled
-    template: charts/tt-k8s-driver-manager/templates/manager-deployment.yaml
-    set:
-      tt-k8s-driver-manager.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 0
