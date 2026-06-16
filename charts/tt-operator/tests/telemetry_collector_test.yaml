@@ -1,0 +1,151 @@
+suite: tt-telemetry collector DaemonSet (umbrella consumption)
+# Render contract for tt-telemetry's per-node collector DaemonSet as the umbrella
+# deploys it (pinned subchart v0.0.10-alpha). Assertions reflect the umbrella's
+# values.yaml overrides — namespace consolidation (tt-operator-system), the
+# pinned org image, the non-empty config (→ ConfigMap + --config wiring), and the
+# deploy-gate daemonset.affinity. Other subcharts are disabled to keep the
+# whole-chart render small and dodge tt-dra-driver's k8s>=1.33 floor; the suite
+# is scoped to the one DaemonSet template, so documentIndex 0 is implicit.
+templates:
+  - charts/tt-telemetry/templates/daemonset.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-k8s-driver-manager.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders the collector DaemonSet, consolidated into the release namespace
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: DaemonSet
+      - equal:
+          path: metadata.name
+          value: tt-telemetry-daemonset
+      # Umbrella pins tt-telemetry.namespace (the subchart has no Release.Namespace
+      # fallback), so it lands alongside the rest of tt-operator.
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+      - equal:
+          path: metadata.labels.app
+          value: tt-telemetry
+      - equal:
+          path: spec.template.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.template.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+      - equal:
+          path: spec.updateStrategy.rollingUpdate.maxUnavailable
+          value: 25%
+
+  - it: uses the umbrella-pinned org image and forwards an override
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^ghcr\.io/tenstorrent/tt-telemetry:'
+  - it: image repository/tag override is forwarded
+    set:
+      tt-telemetry.image.repository: ghcr.io/acme/telemetry
+      tt-telemetry.image.tag: contract-test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/acme/telemetry:contract-test
+
+  - it: wires the rendered ConfigMap in (umbrella sets config.fabric_manager_address)
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[1]
+          pattern: '--config=/etc/tt-telemetry/config\.yaml'
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: tt-telemetry-config
+            mountPath: /etc/tt-telemetry
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: tt-telemetry-config
+            configMap:
+              name: tt-telemetry-config
+      # The checksum/config annotation only renders when config is non-empty.
+      - isNotEmpty:
+          path: spec.template.metadata.annotations
+
+  - it: applies the umbrella deploy-gate nodeAffinity (TT-present AND drain gate)
+    asserts:
+      - contains:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions
+          content:
+            key: feature.node.kubernetes.io/pci-1200_1e52.present
+            operator: In
+            values: ["true"]
+      - contains:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions
+          content:
+            key: tenstorrent.com/deploy.tt-telemetry
+            operator: NotIn
+            values: ["false"]
+
+  - it: legacy daemonset.nodeSelector overrides the affinity block
+    set:
+      tt-telemetry.daemonset.nodeSelector:
+        - node-a
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/hostname
+      - contains:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values
+          content: node-a
+
+  - it: runs privileged with hardware capabilities (locks the security surface)
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.privileged
+          value: true
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: SYS_ADMIN
+
+  - it: exposes the telemetry-http port and wires the probes
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8080
+            name: telemetry-http
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /metrics
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /api/status
+
+  - it: pins the collector resource requests/limits
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 1Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 2Gi
+
+  - it: forwards imagePullSecrets onto the collector pod
+    set:
+      tt-telemetry.imagePullSecrets:
+        - name: tt-operator-image-pulltoken
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: tt-operator-image-pulltoken
