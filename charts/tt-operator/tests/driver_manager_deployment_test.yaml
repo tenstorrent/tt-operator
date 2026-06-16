@@ -1,0 +1,227 @@
+suite: tt-k8s-driver-manager controller Deployment (umbrella consumption)
+# Exhaustive render contract for the subchart's controller Deployment as the
+# umbrella deploys it (pinned subchart, no source in this repo). Every other
+# subchart is disabled so the whole-chart render stays small and avoids
+# tt-dra-driver's k8s>=1.33 kubeVersion floor; assertions are scoped to the one
+# Deployment template, so documentIndex 0 is implicit.
+#
+# Release name is tt-operator, so the subchart fullname helper yields
+# `tt-operator-tt-k8s-driver-manager` (release name doesn't contain the chart
+# name) → controller objects are `…-controller`, installer SA is `…-installer`.
+templates:
+  - charts/tt-k8s-driver-manager/templates/manager-deployment.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders exactly one controller Deployment, named + namespaced correctly
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: tt-operator-tt-k8s-driver-manager-controller
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: tt-operator-tt-k8s-driver-manager-controller
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: system-cluster-critical
+
+  - it: defaults replicas to 1 and honors an override
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+  - it: replicas override is forwarded
+    set:
+      tt-k8s-driver-manager.controller.replicas: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: defaults the controller image to the published repo + IfNotPresent
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^ghcr\.io/tenstorrent/tt-k8s-driver-manager-controller:'
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+
+  - it: forwards the controller image repository/tag + pullPolicy overrides
+    set:
+      tt-k8s-driver-manager.controller.image.repository: ghcr.io/acme/controller
+      tt-k8s-driver-manager.controller.image.tag: contract-test
+      tt-k8s-driver-manager.controller.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/acme/controller:contract-test
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: defaults leader election off and honors an override
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --leader-elect=false
+  - it: leader election override flips the flag
+    set:
+      tt-k8s-driver-manager.controller.leaderElection: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --leader-elect=true
+
+  - it: names the installer ServiceAccount in the controller env
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: INSTALLER_SERVICE_ACCOUNT
+            value: tt-operator-tt-k8s-driver-manager-installer
+
+  - it: forwards driver + flasher image overrides into the env values
+    set:
+      tt-k8s-driver-manager.driver.image.repository: ghcr.io/acme/builder
+      tt-k8s-driver-manager.driver.image.tag: contract-test
+      tt-k8s-driver-manager.flasher.image.repository: ghcr.io/acme/flasher
+      tt-k8s-driver-manager.flasher.image.tag: contract-test
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRIVER_IMAGE
+            value: ghcr.io/acme/builder:contract-test
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FLASHER_IMAGE
+            value: ghcr.io/acme/flasher:contract-test
+
+  - it: defaults REQUIRE_TT_PCI_LABEL to "true" (quoted string)
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REQUIRE_TT_PCI_LABEL
+            value: "true"
+  - it: honors requireTenstorrentLabel=false (e.g. dev/kind clusters)
+    set:
+      tt-k8s-driver-manager.controller.requireTenstorrentLabel: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REQUIRE_TT_PCI_LABEL
+            value: "false"
+
+  - it: emits DRIVER_DEPLOY_GATES from the default deployGates list
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRIVER_DEPLOY_GATES
+            value: tenstorrent.com/deploy.tt-telemetry
+  - it: joins a custom deployGates list with commas
+    set:
+      tt-k8s-driver-manager.controller.deployGates:
+        - tenstorrent.com/deploy.tt-telemetry
+        - tenstorrent.com/deploy.custom
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRIVER_DEPLOY_GATES
+            value: tenstorrent.com/deploy.tt-telemetry,tenstorrent.com/deploy.custom
+
+  - it: appends controller.extraEnv (used to inject proxy env on RKE2)
+    set:
+      tt-k8s-driver-manager.controller.extraEnv:
+        - name: HTTPS_PROXY
+          value: http://proxy.example.com:3128
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTPS_PROXY
+            value: http://proxy.example.com:3128
+
+  - it: exposes the metrics + probe ports and wires the health probes
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: metrics
+            containerPort: 8080
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: probe
+            containerPort: 8081
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: probe
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: probe
+
+  - it: defaults controller resources and forwards overrides
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi
+  - it: resource overrides are forwarded
+    set:
+      tt-k8s-driver-manager.controller.resources.limits.cpu: "2"
+      tt-k8s-driver-manager.controller.resources.requests.memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "2"
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 128Mi
+
+  - it: keeps the manager container hardened (locks the securityContext)
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+
+  - it: forwards imagePullSecrets onto the controller pod
+    set:
+      tt-k8s-driver-manager.imagePullSecrets:
+        - name: tt-operator-image-pulltoken
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: tt-operator-image-pulltoken
