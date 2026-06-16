@@ -27,21 +27,64 @@ runs:
     - name: tt-telemetry /metrics — tt_driver_initialized reaches 1
       shell: bash
       run: |
-        set -ex
+        set -euo pipefail
         NS='${{ inputs.namespace }}'
-        POD=$(kubectl -n "$NS" get pods -l app=tt-telemetry -o jsonpath='{.items[0].metadata.name}')
-        test -n "$POD"
-        kubectl -n "$NS" port-forward "pod/$POD" 18080:8080 >/tmp/pf.log 2>&1 &
-        PF_PID=$!
-        trap 'kill $PF_PID 2>/dev/null || true' EXIT
-        # --noproxy bypasses squid for 127.0.0.1.
-        timeout 30 bash -c 'until curl -sf --noproxy "*" -o /dev/null http://127.0.0.1:18080/metrics; do sleep 1; done'
-        timeout 480 bash -c '
-          while true; do
-            curl -sf --noproxy "*" http://127.0.0.1:18080/metrics > /tmp/metrics.txt
-            awk "/^tt_driver_initialized([{ ])/ { if (\$NF+0 == 1) found=1 } END { exit !found }" /tmp/metrics.txt && exit 0
-            sleep 5
-          done'
-        grep -E "^tt_driver_initialized" /tmp/metrics.txt | head -5
+
+        PF_PID=""
+        cleanup() {
+          if [ -n "$PF_PID" ]; then kill "$PF_PID" 2>/dev/null || true; fi
+        }
+        trap cleanup EXIT
+
+        # (Re)establish a port-forward to whichever collector pod is current.
+        # The collector restarts while it waits for the device — a pre-driver
+        # start finds no chips and exits, and UMD init on a multi-chip box is
+        # slow — which tears the forward down. So we re-resolve the pod and
+        # reconnect rather than assume one long-lived tunnel (a single fixed
+        # 30s reachability gate could not survive one CrashLoopBackOff cycle).
+        start_pf() {
+          cleanup
+          PF_PID=""
+          local pod
+          pod=$(kubectl -n "$NS" get pods -l app=tt-telemetry \
+                  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          [ -n "$pod" ] || return 1
+          kubectl -n "$NS" port-forward "pod/$pod" 18080:8080 >/tmp/pf.log 2>&1 &
+          PF_PID=$!
+          sleep 2
+        }
+
+        # One tolerant budget: wait up to 8 min for /metrics to be reachable AND
+        # report tt_driver_initialized=1. --noproxy bypasses squid for 127.0.0.1.
+        ok=0
+        deadline=$(( SECONDS + 480 ))
+        start_pf || true
+        while [ "$SECONDS" -lt "$deadline" ]; do
+          if [ -z "$PF_PID" ] || ! kill -0 "$PF_PID" 2>/dev/null; then
+            start_pf || { sleep 5; continue; }
+          fi
+          if curl -sf --noproxy '*' http://127.0.0.1:18080/metrics >/tmp/metrics.txt 2>/dev/null; then
+            if awk '/^tt_driver_initialized([{ ])/ { if ($NF+0 == 1) f=1 } END { exit !f }' /tmp/metrics.txt; then
+              ok=1; break
+            fi
+          else
+            # Connection refused usually means the collector just restarted and
+            # has not rebound :8080 yet — reconnect and keep waiting.
+            start_pf || true
+          fi
+          sleep 5
+        done
+
+        if [ "$ok" -ne 1 ]; then
+          echo "::error::timed out waiting for tt-telemetry /metrics tt_driver_initialized=1"
+          echo "----- /tmp/pf.log (port-forward) -----"
+          cat /tmp/pf.log 2>/dev/null || echo "(no pf.log)"
+          echo "----- tail /tmp/metrics.txt -----"
+          tail -20 /tmp/metrics.txt 2>/dev/null || echo "(no metrics captured)"
+          kubectl -n "$NS" get pods -l app=tt-telemetry -o wide || true
+          exit 1
+        fi
+
+        grep -E '^tt_driver_initialized' /tmp/metrics.txt | head -5
         grep -qE '^# (HELP|TYPE) ' /tmp/metrics.txt
         echo "OK: tt_driver_initialized=1; /metrics served $(wc -l < /tmp/metrics.txt) lines"
