@@ -4,10 +4,16 @@ suite: tt-telemetry collector DaemonSet (umbrella consumption)
 # values.yaml overrides — namespace consolidation (tt-operator-system), the
 # pinned org image, the non-empty config (→ ConfigMap + --config wiring), and the
 # deploy-gate daemonset.affinity. Other subcharts are disabled to keep the
-# whole-chart render small and dodge tt-dra-driver's k8s>=1.33 floor; the suite
-# is scoped to the one DaemonSet template, so documentIndex 0 is implicit.
+# whole-chart render small and dodge tt-dra-driver's k8s>=1.33 floor.
+#
+# `templates` lists configmap.yaml alongside daemonset.yaml because the DaemonSet
+# computes a checksum/config annotation via `include ".../configmap.yaml"` —
+# helm-unittest only loads the templates a suite declares, so the include would
+# otherwise be unresolvable. Each test pins `template:` to the DaemonSet so
+# assertions only see that document.
 templates:
   - charts/tt-telemetry/templates/daemonset.yaml
+  - charts/tt-telemetry/templates/configmap.yaml
 release:
   name: tt-operator
   namespace: tt-operator-system
@@ -20,6 +26,7 @@ set:
   kubepmix.enabled: false
 tests:
   - it: renders the collector DaemonSet, consolidated into the release namespace
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -47,11 +54,13 @@ tests:
           value: 25%
 
   - it: uses the umbrella-pinned org image and forwards an override
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
           pattern: '^ghcr\.io/tenstorrent/tt-telemetry:'
   - it: image repository/tag override is forwarded
+    template: charts/tt-telemetry/templates/daemonset.yaml
     set:
       tt-telemetry.image.repository: ghcr.io/acme/telemetry
       tt-telemetry.image.tag: contract-test
@@ -61,6 +70,7 @@ tests:
           value: ghcr.io/acme/telemetry:contract-test
 
   - it: wires the rendered ConfigMap in (umbrella sets config.fabric_manager_address)
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].args[1]
@@ -82,6 +92,7 @@ tests:
           path: spec.template.metadata.annotations
 
   - it: applies the umbrella deploy-gate nodeAffinity (TT-present AND drain gate)
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - contains:
           path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions
@@ -97,6 +108,7 @@ tests:
             values: ["false"]
 
   - it: legacy daemonset.nodeSelector overrides the affinity block
+    template: charts/tt-telemetry/templates/daemonset.yaml
     set:
       tt-telemetry.daemonset.nodeSelector:
         - node-a
@@ -109,6 +121,7 @@ tests:
           content: node-a
 
   - it: runs privileged with hardware capabilities (locks the security surface)
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - equal:
           path: spec.template.spec.containers[0].securityContext.privileged
@@ -118,6 +131,7 @@ tests:
           content: SYS_ADMIN
 
   - it: exposes the telemetry-http port and wires the probes
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - contains:
           path: spec.template.spec.containers[0].ports
@@ -132,6 +146,7 @@ tests:
           value: /api/status
 
   - it: pins the collector resource requests/limits
+    template: charts/tt-telemetry/templates/daemonset.yaml
     asserts:
       - equal:
           path: spec.template.spec.containers[0].resources.requests.memory
@@ -141,6 +156,7 @@ tests:
           value: 2Gi
 
   - it: forwards imagePullSecrets onto the collector pod
+    template: charts/tt-telemetry/templates/daemonset.yaml
     set:
       tt-telemetry.imagePullSecrets:
         - name: tt-operator-image-pulltoken
