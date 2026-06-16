@@ -1,7 +1,7 @@
-name: validate
+name: static-checks
 
-# Validation layer on top of ci.yaml's lint + smoke-install. Catches problems
-# that `helm lint` and a single default `helm template` render past:
+# Static (no-cluster) checks for the chart. Catches problems that `helm lint`
+# and a single default `helm template` render past:
 #   - lint-tools:          actionlint / shellcheck / yamllint on the repo.
 #   - helm-lint-strict:    `helm lint --strict`, which also enforces the
 #                          committed values.schema.json.
@@ -14,8 +14,8 @@ name: validate
 # AUTH NOTE: jobs that build chart deps pull the tt-k8s-driver-manager OCI
 # subchart, which tt-operator's GITHUB_TOKEN can't read cross-repo yet — they
 # authenticate with the GHCR_PULL_PAT secret via the helm-deps composite
-# action. See ci.yaml's header for the full story. TODO: drop the PAT once
-# cross-repo package access is granted.
+# action. See the helm-deps action for the canonical AUTH NOTE. TODO: drop the
+# PAT once cross-repo package access is granted.
 
 on:
   push:
@@ -72,7 +72,7 @@ jobs:
           # Everything on (matches the chart's shipped defaults).
           - name: defaults
             args: ""
-          # Only NFD + the driver manager — mirrors the smoke-install lane.
+          # Only NFD + the driver manager.
           - name: driver-only
             args: >-
               --set tt-fabric-manager.enabled=false

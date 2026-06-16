@@ -5,7 +5,7 @@ description: |
   Creates the cluster, authenticates to GHCR, side-loads the driver-manager
   images at the tag pinned in Chart.yaml, fakes the NFD tt-present node
   label, and builds chart dependencies — leaving the runner ready for
-  `helm install`. Shared by the smoke-install and integration jobs.
+  `helm install`. Used by the kind integration job (integration-kind.yaml).
 
   Assumes the caller has already run actions/checkout and azure/setup-helm
   (the composite's helm steps need the binary on PATH).
@@ -13,8 +13,8 @@ description: |
   AUTH NOTE (temporary): tt-operator's GITHUB_TOKEN lacks cross-repo read on
   the tt-k8s-driver-manager GHCR packages, so pulls authenticate with a
   personal PAT (the GHCR_PULL_PAT repo secret, passed in as `ghcr-password`).
-  See ci.yaml's header. TODO: drop this once cross-repo package access is
-  granted and revert to secrets.GITHUB_TOKEN.
+  See the helm-deps action for the canonical note. TODO: drop this once
+  cross-repo package access is granted and revert to secrets.GITHUB_TOKEN.
 
 inputs:
   cluster-name:

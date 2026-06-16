@@ -7,11 +7,13 @@ description: |
   Used by the non-cluster validation jobs (strict lint, render matrix,
   Chart.lock coherence).
 
-  AUTH NOTE (temporary): tt-operator's GITHUB_TOKEN lacks cross-repo read on
-  the tt-k8s-driver-manager GHCR packages, so the OCI subchart pull
-  authenticates with a personal PAT (the GHCR_PULL_PAT repo secret, passed
-  in as `ghcr-password`). See ci.yaml's header. TODO: drop this once
-  cross-repo package access is granted and revert to secrets.GITHUB_TOKEN.
+  AUTH NOTE (temporary, canonical): tt-operator's GITHUB_TOKEN lacks cross-repo
+  read on the tt-k8s-driver-manager GHCR packages, so the OCI subchart pull
+  authenticates with a personal PAT (the GHCR_PULL_PAT repo secret, passed in
+  as `ghcr-password`). Until an org admin grants access (Manage Actions access
+  → add tt-operator → Read on those packages), every GHCR pull across CI uses
+  this PAT — the other workflows/actions point here for the full story.
+  TODO: drop this and revert to secrets.GITHUB_TOKEN once access is granted.
 
 inputs:
   ghcr-username:

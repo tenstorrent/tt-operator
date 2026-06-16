@@ -8,15 +8,15 @@ name: integration-rke2
 # /dev/tenstorrent. Matrixed across the n150 (Wormhole) and bh-loudbox
 # (Blackhole, vIOMMU) runner pools — same code path, different hardware.
 #
-# Companion to ci.yaml's kind smoke + integration-kind.yaml (which fake the NFD
-# label and only reach image-pull); this is the real-hardware tier.
+# Companion to integration-kind.yaml (which fakes the NFD label and only
+# reaches image-pull); this is the real-hardware tier.
 #
 # Modular by design: each phase is a composite action under .github/actions/,
 # so adding a check is a new composite + one `uses:` line below.
 #
 # AUTH NOTE: the tt-k8s-driver-manager OCI subchart + private images are pulled
 # with the GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read).
-# See ci.yaml's header. TODO: drop once cross-repo access is granted.
+# See the helm-deps action for the canonical note. TODO: drop once granted.
 
 on:
   push:

@@ -6,12 +6,12 @@ name: integration-kind
 # runtime-created resources behave on a real cluster, without Tenstorrent
 # hardware. Tier 2 (self-hosted hardware) is covered by integration-rke2.yaml.
 #
-# This is deeper than ci.yaml's smoke-install (which only checks install +
-# image pulls); it shares the kind-bootstrap composite with it.
+# Beyond a bare install smoke-test: also asserts CRDs, RBAC, the controller
+# Deployment, and the per-CR installer DaemonSet (built on kind-bootstrap).
 #
 # AUTH NOTE: pulls the tt-k8s-driver-manager OCI subchart + images with the
-# GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read). See
-# ci.yaml's header. TODO: drop once cross-repo access is granted.
+# GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read). See the
+# helm-deps action for the canonical note. TODO: drop once access is granted.
 
 on:
   push:
