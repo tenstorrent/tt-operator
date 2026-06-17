@@ -1,0 +1,42 @@
+name: Install tt-operator umbrella
+description: |
+  Cluster-agnostic `helm install` of the umbrella chart. Knows nothing about
+  kind vs RKE2 etc, image side-loading vs pull secrets, or proxies — all of that is
+  expressed by the caller through a values file and/or extra --set flags.
+  Assumes chart deps are already built (helm-deps) and the cluster is reachable
+  (KUBECONFIG set). Used by both the kind and RKE2 integration jobs.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  release-name:
+    description: Helm release name.
+    default: tt-operator
+  create-namespace:
+    description: 'Pass --create-namespace ("true"/"false"). Set false when the namespace is pre-created (e.g. to stage a pull secret).'
+    default: "false"
+  values-file:
+    description: Optional path to a values file (-f). Use for overrides with commas/brackets that --set mangles.
+    default: ""
+  extra-args:
+    description: 'Optional extra helm args, e.g. "--set tt-telemetry.enabled=false". Word-split, so values must be bracket/space-free — use values-file otherwise.'
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -ex
+        args=(install "${{ inputs.release-name }}" charts/tt-operator -n "${{ inputs.namespace }}")
+        if [ "${{ inputs.create-namespace }}" = "true" ]; then
+          args+=(--create-namespace)
+        fi
+        if [ -n "${{ inputs.values-file }}" ]; then
+          args+=(-f "${{ inputs.values-file }}")
+        fi
+        # Caller-supplied flags (bracket/space-free). Intentional word-split.
+        # shellcheck disable=SC2206
+        extra=( ${{ inputs.extra-args }} )
+        helm "${args[@]}" ${extra[@]+"${extra[@]}"}

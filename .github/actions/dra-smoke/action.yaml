@@ -1,0 +1,79 @@
+name: DRA claim smoke
+description: |
+  End-to-end DRA check: tt-dra-driver's kubelet plugin discovers ASICs via the
+  TTFM agent's GetTopology RPC and publishes a ResourceSlice device per MMIO
+  ASIC; a Pod requesting deviceClassName tenstorrent.com triggers per-device CDI
+  edits that mount /dev/tenstorrent/<N> into the container.
+
+  Run with continue-on-error at the call site (pending tt-dra-driver#14: the
+  kubelet plugin doesn't retry FM GetTopology on NOT_DISCOVERED, so the slice
+  can stay permanently empty in CI even when everything else is healthy). The
+  rest of the job is the real signal until #14 lands.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        DS=$(kubectl -n "$NS" get ds -l app.kubernetes.io/name=tt-dra-driver \
+          -o jsonpath='{.items[0].metadata.name}')
+        kubectl -n "$NS" rollout status "ds/$DS" --timeout=3m
+        # TODO(tt-dra-driver#14): drop this poll once upstream adds the
+        # TOPOLOGY_NOT_DISCOVERED retry loop; today the slice may never populate.
+        timeout 180 bash -c '
+          until [ "$(kubectl get resourceslices \
+              -o jsonpath="{range .items[*]}{.spec.devices[*].name}{end}" 2>/dev/null | wc -w)" -gt 0 ]; do
+            sleep 3
+          done'
+        kubectl get resourceslices -o yaml | grep -A4 "devices:"
+        kubectl apply -f - <<'EOF'
+        apiVersion: resource.k8s.io/v1
+        kind: ResourceClaim
+        metadata:
+          name: tt-smoke
+          namespace: default
+        spec:
+          devices:
+            requests:
+              - name: chip
+                exactly:
+                  deviceClassName: tenstorrent.com
+        ---
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: tt-smoke
+          namespace: default
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: probe
+              image: busybox:1.36
+              command:
+                - sh
+                - -c
+                - 'test -c /dev/tenstorrent/0 && ls -l /dev/tenstorrent && echo DRA_OK'
+              resources:
+                claims:
+                  - name: chip
+          resourceClaims:
+            - name: chip
+              resourceClaimName: tt-smoke
+        EOF
+        timeout 180 bash -c '
+          until kubectl get resourceclaim tt-smoke \
+            -o jsonpath="{.status.allocation.devices.results[0].device}" 2>/dev/null | grep -q .; do
+            sleep 3
+          done'
+        kubectl get resourceclaim tt-smoke -o yaml | sed -n '/status:/,$p'
+        kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/tt-smoke --timeout=5m
+        kubectl logs pod/tt-smoke
+        kubectl logs pod/tt-smoke | grep -q DRA_OK
+        echo "OK: DRA claim bound, /dev/tenstorrent/0 visible inside the claimed Pod"

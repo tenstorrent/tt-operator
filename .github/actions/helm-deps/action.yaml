@@ -1,0 +1,44 @@
+name: 'helm deps'
+description: |
+  Authenticate to GHCR and build the umbrella chart's dependencies, with no
+  cluster involved. Logs in to the OCI registry, registers the one HTTP
+  dependency repo (NFD), and runs `helm dependency build charts/tt-operator`.
+  Assumes the caller already ran actions/checkout and azure/setup-helm.
+  Used by the non-cluster validation jobs (strict lint, render matrix,
+  Chart.lock coherence).
+
+  AUTH NOTE (temporary, canonical): tt-operator's GITHUB_TOKEN lacks cross-repo
+  read on the tt-k8s-driver-manager GHCR packages, so the OCI subchart pull
+  authenticates with a personal PAT (the GHCR_PULL_PAT repo secret, passed in
+  as `ghcr-password`). Until an org admin grants access (Manage Actions access
+  → add tt-operator → Read on those packages), every GHCR pull across CI uses
+  this PAT — the other workflows/actions point here for the full story.
+  TODO: drop this and revert to secrets.GITHUB_TOKEN once access is granted.
+
+inputs:
+  ghcr-username:
+    description: 'GHCR username for the PAT used to pull subchart images.'
+    default: 'kluongTT'
+  ghcr-password:
+    description: 'GHCR token (GHCR_PULL_PAT) with read:packages, SSO-authorized to tenstorrent.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Log in to GHCR (for OCI subchart pulls)
+      shell: bash
+      run: |
+        echo "${{ inputs.ghcr-password }}" | \
+          helm registry login ghcr.io --username "${{ inputs.ghcr-username }}" --password-stdin
+
+    - name: Register chart dependency repos + build
+      shell: bash
+      # helm dependency build pulls one HTTP repo (NFD) and one OCI repo
+      # (tenstorrent/helm-charts for tt-k8s-driver-manager). HTTP repos must
+      # be registered first; OCI is used directly via the login above. This
+      # also errors if Chart.lock is out of sync with Chart.yaml.
+      run: |
+        helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+        helm repo update
+        helm dependency build charts/tt-operator

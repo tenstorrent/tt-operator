@@ -1,0 +1,38 @@
+# Pinned lint hooks shared by local git commits, `make lint`, and CI
+# (validate.yaml → lint-tools runs `pre-commit run --all-files`). Bumping a
+# `rev` here updates local and CI together — one source of truth.
+#
+# One-time local setup:
+#   pipx install pre-commit      # or: brew install pre-commit
+#   pre-commit install           # optional: run hooks automatically on commit
+# The actionlint hook runs via Docker, so the daemon must be up locally.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        # crds/ is a vendored, machine-generated bundle owned by
+        # hack/refresh-vendored-crds.sh — leave its formatting to that script.
+        exclude: ^charts/tt-operator/crds/
+      - id: trailing-whitespace
+        exclude: ^charts/tt-operator/crds/
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        # Helm templates are Go-templated text, not valid YAML.
+        exclude: ^charts/tt-operator/templates/
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml]
+        # Defensive — .yamllint.yaml already ignores these; keep them out of
+        # the hook's file list too.
+        exclude: ^charts/tt-operator/(templates|crds)/
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint-docker
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck

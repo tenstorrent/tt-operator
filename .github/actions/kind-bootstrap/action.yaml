@@ -1,0 +1,93 @@
+name: 'kind bootstrap'
+description: |
+  Stand up a single-node kind cluster preloaded to install the tt-operator
+  umbrella against tt-k8s-driver-manager without real Tenstorrent hardware.
+  Creates the cluster, authenticates to GHCR, side-loads the driver-manager
+  images at the tag pinned in Chart.yaml, fakes the NFD tt-present node
+  label, and builds chart dependencies — leaving the runner ready for
+  `helm install`. Used by the kind integration job (integration-kind.yaml).
+
+  Assumes the caller has already run actions/checkout and azure/setup-helm
+  (the composite's helm steps need the binary on PATH).
+
+  AUTH NOTE (temporary): tt-operator's GITHUB_TOKEN lacks cross-repo read on
+  the tt-k8s-driver-manager GHCR packages, so pulls authenticate with a
+  personal PAT (the GHCR_PULL_PAT repo secret, passed in as `ghcr-password`).
+  See the helm-deps action for the canonical note. TODO: drop this once
+  cross-repo package access is granted and revert to secrets.GITHUB_TOKEN.
+
+inputs:
+  cluster-name:
+    description: 'Name of the kind cluster to create.'
+    default: 'tt-smoke'
+  ghcr-username:
+    description: 'GHCR username for the PAT used to pull subchart images.'
+    default: 'kluongTT'
+  ghcr-password:
+    description: 'GHCR token (GHCR_PULL_PAT) with read:packages, SSO-authorized to tenstorrent.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up kind cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: ${{ inputs.cluster-name }}
+        # Single-node: enough to exercise install + image-pull paths.
+        # The driver DS won't reach Ready in kind (no real kernel build
+        # tree at /lib/modules/<kver>/build) — that's expected; we only
+        # verify it gets PAST image pull.
+
+    # See AUTH NOTE above — both docker and helm pulls use the PAT until
+    # cross-repo OCI access is granted.
+    - name: Docker login GHCR (for kind image side-load)
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ inputs.ghcr-username }}
+        password: ${{ inputs.ghcr-password }}
+
+    - name: Helm registry login (for OCI subchart pull)
+      shell: bash
+      run: |
+        echo "${{ inputs.ghcr-password }}" | \
+          helm registry login ghcr.io --username "${{ inputs.ghcr-username }}" --password-stdin
+
+    - name: Pre-pull tt-k8s-driver-manager images + load into kind
+      shell: bash
+      # kind nodes run their own containerd; sharing the host's GHCR
+      # creds via per-pod imagePullSecrets is fiddly. Easier to pull on
+      # the host (where we ARE logged in) and side-load into kind.
+      # The tag has to match the chart's pinned subchart version (which
+      # the subchart's templates default image.tag to via appVersion).
+      # Parse it out of Chart.yaml so this stays in sync without manual
+      # bumps when the dependency version changes.
+      run: |
+        TAG=$(awk '/^  - name: tt-k8s-driver-manager$/{f=1; next} f && /version:/{gsub(/"/,""); print $2; exit}' charts/tt-operator/Chart.yaml)
+        echo "Using tt-k8s-driver-manager image tag: ${TAG}"
+        for img in tt-k8s-driver-manager-controller tt-k8s-driver-manager-builder tt-k8s-driver-manager-flasher; do
+          docker pull "ghcr.io/tenstorrent/${img}:${TAG}"
+          kind load docker-image "ghcr.io/tenstorrent/${img}:${TAG}" --name "${{ inputs.cluster-name }}"
+        done
+
+    - name: Fake the NFD tt-present label on every node
+      shell: bash
+      # The driver DS nodeAffinity requires
+      # feature.node.kubernetes.io/pci-1200_1e52.present=true. We're
+      # not running NFD here (no PCI devices to detect), so stamp the
+      # label by hand to make the DS schedulable.
+      run: |
+        for node in $(kubectl get nodes -o name); do
+          kubectl label "$node" feature.node.kubernetes.io/pci-1200_1e52.present=true --overwrite
+        done
+
+    - name: Register chart dependency repos + build
+      shell: bash
+      # helm dependency build pulls one HTTP repo (NFD) and one OCI repo
+      # (tenstorrent/helm-charts for tt-k8s-driver-manager). HTTP repos
+      # must be registered first; OCI is used directly via the login above.
+      run: |
+        helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+        helm repo update
+        helm dependency build charts/tt-operator

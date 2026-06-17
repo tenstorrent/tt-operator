@@ -1,0 +1,83 @@
+name: Driver install via TenstorrentDriverPolicy
+description: |
+  Drive the real end-to-end driver install: apply a TenstorrentDriverPolicy
+  targeting the tt-present node, wait for the controller to create the per-CR
+  builder DaemonSet (status.daemonSet) and roll it out (its readiness probe
+  checks /sys/module/tenstorrent/version, so Ready means the builder compiled +
+  insmod'd kmd), then cross-check the host: the module is loaded at the target
+  version and /dev/tenstorrent reappeared.
+
+  drain is disabled (single node — cordon/drain would evict the cluster
+  components we just installed). forceUnload is unnecessary because remove-tt-kmd
+  left refcnt=0.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  kmd-version:
+    description: tt-kmd version to install (from tt-runner-preflight).
+    required: true
+  cr-name:
+    description: Name of the TenstorrentDriverPolicy CR.
+    default: ci-smoke
+  rollout-timeout:
+    description: Timeout for the builder DaemonSet rollout (image pull + DKMS build on a fresh VM is slow).
+    default: 12m
+
+runs:
+  using: composite
+  steps:
+    - name: Apply TenstorrentDriverPolicy
+      shell: bash
+      run: |
+        set -ex
+        echo "target kmd version: ${{ inputs.kmd-version }}"
+        kubectl apply -f - <<EOF
+        apiVersion: driver.tenstorrent.com/v1alpha1
+        kind: TenstorrentDriverPolicy
+        metadata:
+          name: ${{ inputs.cr-name }}
+        spec:
+          version: "${{ inputs.kmd-version }}"
+          nodeSelector:
+            matchLabels:
+              feature.node.kubernetes.io/pci-1200_1e52.present: "true"
+          upgradePolicy:
+            drain:
+              enable: false
+            forceUnload: false
+        EOF
+
+    - name: Wait for controller to create + roll out the builder DaemonSet
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        CR='${{ inputs.cr-name }}'
+        ds=""
+        for _ in $(seq 1 30); do
+          ds=$(kubectl get ttdp "$CR" -o jsonpath='{.status.daemonSet}' 2>/dev/null || echo "")
+          [ -n "$ds" ] && break
+          sleep 3
+        done
+        if [ -z "$ds" ]; then
+          echo "FAIL: controller didn't create driver-manager DS"
+          kubectl get ttdp "$CR" -o yaml || true
+          exit 1
+        fi
+        echo "controller created ds: $ds"
+        kubectl -n "$NS" rollout status ds "$ds" --timeout='${{ inputs.rollout-timeout }}'
+        kubectl get ttdp "$CR" -o yaml
+
+    - name: tt-kmd loaded on host + /dev/tenstorrent present
+      shell: bash
+      run: |
+        set -ex
+        test -e /sys/module/tenstorrent/version
+        got=$(cat /sys/module/tenstorrent/version)
+        echo "host kmd: ${got} (target: ${{ inputs.kmd-version }})"
+        [ "$got" = "${{ inputs.kmd-version }}" ] || { echo "FAIL: kmd version mismatch"; exit 1; }
+        ls -l /dev/tenstorrent/
+        test -e /dev/tenstorrent/0
+        echo "OK: operator reinstalled tt-kmd ${{ inputs.kmd-version }} end-to-end"

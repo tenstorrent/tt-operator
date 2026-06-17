@@ -1,0 +1,35 @@
+name: TT runner preflight
+description: |
+  Confirm a Tenstorrent runner VM is what we expect before sinking time into
+  the rest of the job: /dev/tenstorrent present, tt-kmd loaded, and outbound
+  connectivity to the hosts the job depends on. Outputs the preloaded tt-kmd
+  version so later phases can drive the operator to reinstall that same version.
+
+outputs:
+  kmd-version:
+    description: tt-kmd version preloaded on the runner (from /sys/module/tenstorrent/version).
+    value: ${{ steps.probe.outputs.kmd-version }}
+
+runs:
+  using: composite
+  steps:
+    - id: probe
+      shell: bash
+      run: |
+        set -eux
+        uname -a
+        ls -l /dev/tenstorrent/
+        test -e /sys/module/tenstorrent/version \
+          || { echo "FAIL: tenstorrent kernel module not loaded"; exit 1; }
+        ver=$(cat /sys/module/tenstorrent/version)
+        echo "kmd: ${ver}"
+        echo "kmd-version=${ver}" >> "$GITHUB_OUTPUT"
+        lspci -nn | grep -i tenstorrent || true
+        env | grep -iE '^(http|https|no)_proxy' || echo "no proxy env"
+        for host in get.rke2.io github.com ghcr.io kubernetes-sigs.github.io \
+                    raw.githubusercontent.com objects.githubusercontent.com \
+                    api.github.com pkg-containers.githubusercontent.com get.helm.sh; do
+          echo "== probe ${host} =="
+          curl -sS -o /dev/null -w "  http=%{http_code} time=%{time_total}s\n" --max-time 15 "https://${host}/" \
+            || echo "  curl-exit=$?"
+        done

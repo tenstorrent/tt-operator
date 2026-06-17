@@ -31,7 +31,6 @@ if [[ -z "${JOBSET_VERSION}" || "${JOBSET_VERSION}" == "null" ]]; then
 fi
 
 TAG="v${JOBSET_VERSION}"
-SOURCE="https://github.com/kubernetes-sigs/jobset/releases/download/${TAG}/manifests.yaml"
 TMP="$(mktemp)"
 trap 'rm -f "${TMP}"' EXIT
 

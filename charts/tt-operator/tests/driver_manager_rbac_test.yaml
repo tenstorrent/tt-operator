@@ -1,0 +1,169 @@
+suite: tt-k8s-driver-manager RBAC (umbrella consumption)
+# Render contract for the subchart's RBAC bundle as the umbrella deploys it.
+# manager-rbac.yaml is a fixed 6-document file, in this order:
+#   0 controller ServiceAccount
+#   1 manager ClusterRole              (the controller's powerful grant)
+#   2 manager ClusterRoleBinding
+#   3 installer ServiceAccount         (used by the per-CR builder pods)
+#   4 installer ClusterRole            (minimum privilege: nodes get/patch)
+#   5 installer ClusterRoleBinding
+# Tests pin each document by index + kind, then assert its contents. Locking the
+# privilege boundaries here means any upstream widening/narrowing of RBAC trips
+# a red test and gets a deliberate review.
+#
+# Release name tt-operator → fullname `tt-operator-tt-k8s-driver-manager`.
+templates:
+  - charts/tt-k8s-driver-manager/templates/manager-rbac.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders exactly the 6-document RBAC bundle
+    asserts:
+      - hasDocuments:
+          count: 6
+
+  - it: controller ServiceAccount is named + namespaced correctly
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ServiceAccount
+      - equal:
+          path: metadata.name
+          value: tt-operator-tt-k8s-driver-manager-controller
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+
+  - it: manager ClusterRole grants exactly the controller's required powers
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: tt-operator-tt-k8s-driver-manager-manager
+      # Locks the rule-set size — adding/removing a rule upstream trips this.
+      - lengthEqual:
+          path: rules
+          count: 9
+      # Manage the per-CR installer DaemonSets.
+      - contains:
+          path: rules
+          content:
+            apiGroups: ["apps"]
+            resources: ["daemonsets"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      # Drain device-holding pods before rmmod.
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: ["pods/eviction"]
+            verbs: ["create"]
+      # Own the driver CRs + status.
+      - contains:
+          path: rules
+          content:
+            apiGroups: ["driver.tenstorrent.com"]
+            resources: ["tenstorrentdriverpolicies"]
+            verbs: ["get", "list", "watch", "update", "patch"]
+      # Run the per-node firmware-flash Jobs.
+      - contains:
+          path: rules
+          content:
+            apiGroups: ["batch"]
+            resources: ["jobs"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  - it: manager ClusterRoleBinding binds the role to the controller SA
+    documentIndex: 2
+    asserts:
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - equal:
+          path: roleRef.name
+          value: tt-operator-tt-k8s-driver-manager-manager
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+      - equal:
+          path: subjects[0].name
+          value: tt-operator-tt-k8s-driver-manager-controller
+      - equal:
+          path: subjects[0].namespace
+          value: tt-operator-system
+
+  - it: installer ServiceAccount is named + namespaced correctly
+    documentIndex: 3
+    asserts:
+      - isKind:
+          of: ServiceAccount
+      - equal:
+          path: metadata.name
+          value: tt-operator-tt-k8s-driver-manager-installer
+
+  - it: installer ClusterRole stays minimum-privilege (nodes get/patch only)
+    documentIndex: 4
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: tt-operator-tt-k8s-driver-manager-installer
+      - lengthEqual:
+          path: rules
+          count: 1
+      - equal:
+          path: rules[0]
+          value:
+            apiGroups: [""]
+            resources: ["nodes"]
+            verbs: ["get", "patch"]
+
+  - it: installer ClusterRoleBinding binds the role to the installer SA
+    documentIndex: 5
+    asserts:
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: roleRef.name
+          value: tt-operator-tt-k8s-driver-manager-installer
+      - equal:
+          path: subjects[0].name
+          value: tt-operator-tt-k8s-driver-manager-installer
+      - equal:
+          path: subjects[0].namespace
+          value: tt-operator-system
+
+  - it: attaches imagePullSecrets to the controller SA when provided
+    documentIndex: 0
+    set:
+      tt-k8s-driver-manager.imagePullSecrets:
+        - name: tt-operator-image-pulltoken
+    asserts:
+      - contains:
+          path: imagePullSecrets
+          content:
+            name: tt-operator-image-pulltoken
+
+  - it: attaches imagePullSecrets to the installer SA when provided
+    documentIndex: 3
+    set:
+      tt-k8s-driver-manager.imagePullSecrets:
+        - name: tt-operator-image-pulltoken
+    asserts:
+      - contains:
+          path: imagePullSecrets
+          content:
+            name: tt-operator-image-pulltoken

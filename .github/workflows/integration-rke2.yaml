@@ -1,0 +1,104 @@
+name: integration-rke2
+
+# Full end-to-end integration test on Tenstorrent hardware runners (ephemeral
+# KVM VMs with a TT card passed through via VFIO and tt-kmd preloaded). Stands
+# up a single-node RKE2 cluster, installs the umbrella, and drives the operator
+# through a real tt-kmd reinstall, then verifies fabric-manager + telemetry +
+# DRA. The VM is destroyed at job end, so each run gets a fresh kernel +
+# /dev/tenstorrent. Matrixed across the n150 (Wormhole) and bh-loudbox
+# (Blackhole, vIOMMU) runner pools — same code path, different hardware.
+#
+# Companion to integration-kind.yaml (which fakes the NFD label and only
+# reaches image-pull); this is the real-hardware tier.
+#
+# Modular by design: each phase is a composite action under .github/actions/,
+# so adding a check is a new composite + one `uses:` line below.
+#
+# AUTH NOTE: the tt-k8s-driver-manager OCI subchart + private images are pulled
+# with the GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read).
+# See the helm-deps action for the canonical note. TODO: drop once granted.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+      - ".github/actions/**"
+      - ".github/workflows/integration-rke2.yaml"
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/actions/**"
+      - ".github/workflows/integration-rke2.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: integration-rke2-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  install-on-rke2:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - tt-ubuntu-2204-n150-stable
+          - tt-ubuntu-2204-bh-loudbox-viommu-stable
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-flight — runner introspection
+        id: preflight
+        uses: ./.github/actions/tt-runner-preflight
+
+      - name: Remove preloaded tt-kmd (incl. DKMS)
+        uses: ./.github/actions/remove-tt-kmd
+
+      - name: Set up RKE2 cluster
+        uses: ./.github/actions/setup-rke2-cluster
+
+      - name: Build chart deps (GHCR login + helm dep build)
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+
+      - name: Stage namespace + GHCR pull secret
+        uses: ./.github/actions/ghcr-pull-secret
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+
+      - name: Generate install values (proxy + pull secrets)
+        id: vals
+        uses: ./.github/actions/rke2-install-values
+
+      - name: Install umbrella
+        uses: ./.github/actions/install-tt-operator
+        with:
+          values-file: ${{ steps.vals.outputs.values-file }}
+
+      - name: Verify install landed
+        uses: ./.github/actions/verify-install
+
+      - name: Driver install via TenstorrentDriverPolicy
+        uses: ./.github/actions/driver-policy-install
+        with:
+          kmd-version: ${{ steps.preflight.outputs.kmd-version }}
+
+      - name: Verify tt-fabric-manager + tt-telemetry
+        uses: ./.github/actions/verify-tt-stack
+
+      - name: DRA claim smoke
+        # continue-on-error pending tt-dra-driver#14 (empty-ResourceSlice race).
+        continue-on-error: true
+        uses: ./.github/actions/dra-smoke
+
+      - name: Diagnostics on failure
+        if: failure()
+        uses: ./.github/actions/integration-failure-diagnostics

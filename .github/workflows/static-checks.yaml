@@ -1,0 +1,212 @@
+name: static-checks
+
+# Static (no-cluster) checks for the chart. Catches problems that `helm lint`
+# and a single default `helm template` render past:
+#   - lint-tools:          actionlint / shellcheck / yamllint on the repo.
+#   - helm-lint-strict:    `helm lint --strict`, which also enforces the
+#                          committed values.schema.json.
+#   - render-validate:     render the umbrella under a matrix of value
+#                          permutations and validate every rendered manifest
+#                          with kubeconform against the k8s + CRD schemas.
+#   - chart-lock-coherence: Chart.lock stays in sync with Chart.yaml.
+#   - crd-coherence:       vendored CRDs match the pinned subchart versions.
+#
+# AUTH NOTE: jobs that build chart deps pull the tt-k8s-driver-manager OCI
+# subchart, which tt-operator's GITHUB_TOKEN can't read cross-repo yet — they
+# authenticate with the GHCR_PULL_PAT secret via the helm-deps composite
+# action. See the helm-deps action for the canonical AUTH NOTE. TODO: drop the
+# PAT once cross-repo package access is granted.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Shared by `helm template --kube-version` and kubeconform. 1.33 satisfies
+  # the tightest subchart floor (tt-dra-driver requires k8s >= 1.33).
+  KUBE_VERSION: "1.33.0"
+
+jobs:
+  lint-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: pre-commit (yamllint, actionlint, shellcheck, file hygiene)
+        # Runs the pinned hooks in .pre-commit-config.yaml — identical to what
+        # `make lint` / the local commit hook run, so local↔CI versions match.
+        # actionlint runs via Docker (available on the runner).
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+
+  helm-lint-strict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Build chart deps
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+      - name: helm lint --strict (also validates values.schema.json)
+        run: helm lint --strict charts/tt-operator
+
+  render-validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Everything on (matches the chart's shipped defaults).
+          - name: defaults
+            args: ""
+          # Only NFD + the driver manager.
+          - name: driver-only
+            args: >-
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set tt-telemetry.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+          # The interdependent opt-in stack: TTFM + DRA + telemetry.
+          - name: dra-stack
+            args: >-
+              --set node-feature-discovery.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+          # Edge case: every subchart disabled.
+          - name: all-off
+            args: >-
+              --set node-feature-discovery.enabled=false
+              --set tt-k8s-driver-manager.enabled=false
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set tt-telemetry.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Build chart deps
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+
+      - name: Install kubeconform
+        run: |
+          KC_VERSION=v0.6.7
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KC_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+
+      - name: 'Render (${{ matrix.name }}) + kubeconform'
+        # -ignore-missing-schemas: out-of-tree CRDs (cert-manager,
+        # prometheus-operator, the subcharts' own CRs) have no built-in
+        # schema; the datree CRDs-catalog covers the common ones and the
+        # rest warn-pass. Core/apps/rbac resources are validated strictly —
+        # that's where the real "renders invalid k8s" bugs live.
+        run: |
+          helm template tt-operator charts/tt-operator \
+            --namespace tt-operator-system \
+            --kube-version "${KUBE_VERSION}" \
+            ${{ matrix.args }} > "/tmp/rendered-${{ matrix.name }}.yaml"
+          echo "Rendered $(grep -c '^kind:' "/tmp/rendered-${{ matrix.name }}.yaml") objects"
+          kubeconform \
+            -strict -summary \
+            -kubernetes-version "${KUBE_VERSION}" \
+            -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            "/tmp/rendered-${{ matrix.name }}.yaml"
+
+  chart-lock-coherence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Build chart deps
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+      - name: Chart.lock is in sync with Chart.yaml
+        # helm-deps already ran `helm dependency build`, which hard-errors if
+        # Chart.lock is out of sync with Chart.yaml. This asserts the build
+        # didn't have to rewrite the lock either (only `dependency update`
+        # regenerates it — a rewrite here means the lock was committed stale).
+        run: |
+          git diff --exit-code charts/tt-operator/Chart.lock || {
+            echo "::error::Chart.lock drifted — run 'helm dependency update charts/tt-operator' and commit the result"
+            exit 1
+          }
+
+  crd-coherence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vendored CRDs match the pinned subchart versions
+        # gh + yq are preinstalled on ubuntu-latest. The script re-derives the
+        # vendored CRD bundle from the jobset version pinned in Chart.yaml; any
+        # diff means crds/ was hand-edited or the pin moved without a refresh.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          hack/refresh-vendored-crds.sh
+          git diff --exit-code charts/tt-operator/crds/ || {
+            echo "::error::Vendored CRDs are stale — run hack/refresh-vendored-crds.sh and commit the result"
+            exit 1
+          }
+
+  helm-unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      # Loads HELM_UNITTEST_VERSION (et al.) from hack/tool-versions.env into
+      # the job env — same file the Makefile reads.
+      - uses: ./.github/actions/tool-versions
+      # Contract tests render the chart (incl. the OCI subchart), so deps must
+      # be built first — same GHCR auth as the other render jobs.
+      - name: Build chart deps
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+      - name: Install helm-unittest plugin
+        # --verify=false: recent Helm attempts plugin provenance verification by
+        # default, which the helm-unittest git source doesn't provide.
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}" --verify=false
+      - name: Run contract tests
+        # --strict fails on empty/❓ suites so a mis-pathed test can't silently pass.
+        run: helm unittest --strict charts/tt-operator
+
+  docs-coherence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Loads HELM_DOCS_VERSION from hack/tool-versions.env — same file the
+      # Makefile reads, so local `make docs` and CI use the same helm-docs.
+      - uses: ./.github/actions/tool-versions
+      - name: charts/tt-operator/README.md is current
+        # helm-docs regenerates the chart README from Chart.yaml + the `# --`
+        # annotations in values.yaml, via README.md.gotmpl. No cluster or GHCR
+        # auth needed — it reads chart metadata only.
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work \
+            jnorwood/helm-docs:"${HELM_DOCS_VERSION}" helm-docs --chart-search-root=charts
+          if ! git diff --exit-code charts/tt-operator/README.md; then
+            echo "::error::charts/tt-operator/README.md is stale — run 'make docs' and commit the result"
+            echo "===== generated charts/tt-operator/README.md ====="
+            cat charts/tt-operator/README.md
+            exit 1
+          fi

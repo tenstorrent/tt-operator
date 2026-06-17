@@ -1,0 +1,58 @@
+name: Integration failure diagnostics
+description: |
+  Best-effort cluster + host dump for the RKE2 integration job. Call with
+  `if: failure()`. Never fails itself (set +e) — it only collects context:
+  pods/events across namespaces, DRA slices/claims, controller + builder +
+  telemetry + dra logs (current and previous), the rke2-server journal, and the
+  host's tt-kmd / kernel-header state.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set +e
+        NS='${{ inputs.namespace }}'
+        echo "===== nodes ====="
+        kubectl get nodes -o wide --show-labels
+        echo "===== pods (all ns) ====="
+        kubectl get pods -A -o wide
+        echo "===== ${NS} describe pods ====="
+        kubectl describe pods -n "$NS"
+        echo "===== events (all ns) ====="
+        kubectl get events -A --sort-by=.lastTimestamp | tail -120
+        echo "===== DRA resourceslices + claims ====="
+        kubectl get resourceslices -o wide
+        kubectl get resourceslices -o yaml
+        kubectl get resourceclaim -A -o yaml
+        kubectl get deviceclass tenstorrent.com -o yaml 2>&1
+        echo "===== tt-smoke pod describe ====="
+        kubectl describe pod tt-smoke -n default 2>&1
+        echo "===== tt-dra-driver kubelet plugin logs ====="
+        kubectl -n "$NS" logs -l app.kubernetes.io/name=tt-dra-driver --tail=200 --all-containers 2>&1
+        echo "===== tt-telemetry pod logs (current + previous) ====="
+        for pod in $(kubectl -n "$NS" get pods -l app=tt-telemetry -o name 2>/dev/null); do
+          echo "--- $pod (current) ---";  kubectl -n "$NS" logs --tail=300 "$pod" 2>&1
+          echo "--- $pod (previous) ---"; kubectl -n "$NS" logs --previous --tail=300 "$pod" 2>&1
+        done
+        echo "===== tt-telemetry /metrics scratch (/tmp, from verify-tt-stack) ====="
+        echo "--- /tmp/pf.log (port-forward) ---";       cat /tmp/pf.log 2>&1 || echo "no /tmp/pf.log"
+        echo "--- /tmp/metrics.txt (tail) ---"; tail -20 /tmp/metrics.txt 2>&1 || echo "no /tmp/metrics.txt"
+        echo "===== rke2-server journal ====="
+        sudo journalctl -u rke2-server --no-pager -n 200
+        echo "===== controller logs ====="
+        kubectl -n "$NS" logs deploy -l app.kubernetes.io/component=controller --tail=200 --all-containers 2>&1
+        echo "===== builder DS pod logs (current + previous) ====="
+        for pod in $(kubectl -n "$NS" get pods -l driver.tenstorrent.com/cr=ci-smoke -o name 2>/dev/null); do
+          echo "--- $pod (current) ---";  kubectl -n "$NS" logs --tail=300 "$pod" 2>&1
+          echo "--- $pod (previous) ---"; kubectl -n "$NS" logs --previous --tail=300 "$pod" 2>&1
+        done
+        echo "===== host kmd state ====="
+        ls -l /sys/module/tenstorrent/ 2>&1 || echo "module not loaded"
+        ls -l /dev/tenstorrent/ 2>&1 || echo "no /dev/tenstorrent"
+        ls -l "/lib/modules/$(uname -r)/build" 2>&1 || echo "no kernel headers"

@@ -1,0 +1,13 @@
+name: 'load tool versions'
+description: |
+  Export the pinned tool versions from hack/tool-versions.env into $GITHUB_ENV
+  so later steps in the job can reference e.g. ${HELM_DOCS_VERSION}. This is the
+  CI half of the single-source-of-truth shared with the Makefile (which reads
+  the same file via `include`). Assumes actions/checkout already ran.
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      # Only KEY=value lines (skip comments/blanks) so $GITHUB_ENV stays valid.
+      run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' hack/tool-versions.env >> "$GITHUB_ENV"

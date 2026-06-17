@@ -1,0 +1,181 @@
+suite: tt-telemetry aggregator + observability (umbrella consumption)
+# Render contract for the aggregator-gated resources (Deployment, Service,
+# Ingress — all behind aggregator.enabled), the config-driven ConfigMap, and the
+# PodMonitor, as the umbrella deploys tt-telemetry (pinned v0.0.10-alpha). Each
+# test scopes itself to one template. Other subcharts are disabled to keep the
+# render small and dodge tt-dra-driver's k8s>=1.33 floor.
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-k8s-driver-manager.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders the aggregator Deployment by default
+    template: charts/tt-telemetry/templates/deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: tt-telemetry
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+      - equal:
+          path: metadata.labels.app
+          value: tt-telemetry-aggregator
+      - equal:
+          path: spec.replicas
+          value: 1
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[1]
+          pattern: '--disable-telemetry'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[1]
+          pattern: '--aggregate-from='
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 1Gi
+
+  - it: drops the aggregator Deployment when aggregator.enabled=false
+    template: charts/tt-telemetry/templates/deployment.yaml
+    set:
+      tt-telemetry.aggregator.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the aggregator NodePort Service by default
+    template: charts/tt-telemetry/templates/service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: tt-telemetry-service
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.selector.app
+          value: tt-telemetry-aggregator
+      - contains:
+          path: spec.ports
+          content:
+            name: telemetry-http
+            port: 8080
+            targetPort: 8080
+            nodePort: 30080
+            protocol: TCP
+
+  - it: drops the Service when aggregator.enabled=false
+    template: charts/tt-telemetry/templates/service.yaml
+    set:
+      tt-telemetry.aggregator.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the aggregator Ingress by default (no TLS)
+    template: charts/tt-telemetry/templates/ingress.yaml
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: metadata.name
+          value: tt-telemetry-ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: tt-telemetry-service
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 8080
+
+  - it: declares a TLS block when network.tls.secretName is set
+    template: charts/tt-telemetry/templates/ingress.yaml
+    set:
+      tt-telemetry.network.tls.secretName: tt-telemetry-tls
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: tt-telemetry-tls
+
+  - it: fails fast when a clusterIssuer is set without a secretName
+    template: charts/tt-telemetry/templates/ingress.yaml
+    set:
+      tt-telemetry.network.tls.clusterIssuer: letsencrypt
+    asserts:
+      - failedTemplate:
+          errorMessage: network.tls.secretName must be set when network.tls.clusterIssuer is set.
+
+  - it: drops the Ingress when aggregator.enabled=false
+    template: charts/tt-telemetry/templates/ingress.yaml
+    set:
+      tt-telemetry.aggregator.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: materializes the ConfigMap from the umbrella's config block
+    template: charts/tt-telemetry/templates/configmap.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: tt-telemetry-config
+      - equal:
+          path: metadata.namespace
+          value: tt-operator-system
+      - isNotEmpty:
+          path: data
+
+  - it: renders the PodMonitor into the monitoring namespace by default
+    template: charts/tt-telemetry/templates/podmonitor.yaml
+    asserts:
+      - isKind:
+          of: PodMonitor
+      - isAPIVersion:
+          of: monitoring.coreos.com/v1
+      - equal:
+          path: metadata.name
+          value: tt-telemetry
+      # PodMonitor lives where prometheus scrapes from, NOT the install ns.
+      - equal:
+          path: metadata.namespace
+          value: monitoring
+      - equal:
+          path: metadata.labels.release
+          value: prometheus
+      - equal:
+          path: spec.namespaceSelector.matchNames[0]
+          value: tt-operator-system
+      - equal:
+          path: spec.selector.matchLabels.app
+          value: tt-telemetry
+      - equal:
+          path: spec.podMetricsEndpoints[0].port
+          value: telemetry-http
+
+  - it: drops the PodMonitor when podMonitor.enabled=false
+    template: charts/tt-telemetry/templates/podmonitor.yaml
+    set:
+      tt-telemetry.podMonitor.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

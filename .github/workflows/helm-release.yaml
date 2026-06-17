@@ -1,4 +1,4 @@
-name: Release Helm Chart
+name: helm-release
 
 # AUTH NOTE (interim): pulling and pushing use DIFFERENT credentials.
 #
@@ -6,8 +6,8 @@ name: Release Helm Chart
 #   tt-operator's GITHUB_TOKEN doesn't have cross-repo read on the
 #   driver-manager-linked GHCR package. Until an org admin grants access
 #   ("Manage Actions access → add tt-operator → Read" on the 4 packages),
-#   we authenticate the pull with the GHCR_PULL_PAT repo secret. Mirrors
-#   ci.yaml's pattern.
+#   we authenticate the pull with the GHCR_PULL_PAT repo secret. Mirrors the
+#   helm-deps action (the canonical AUTH NOTE).
 #
 # - PUSH  (helm push of the umbrella chart to ghcr.io/.../helm-charts):
 #   the published artifact lands in tt-operator's own namespace, where
@@ -55,7 +55,7 @@ jobs:
 
       # See TODO at top of this file — using GHCR_PULL_PAT instead of
       # GITHUB_TOKEN until proper cross-repo access is granted on the four
-      # driver-manager packages. Mirrors ci.yaml's pattern.
+      # driver-manager packages. Mirrors the helm-deps action's pattern.
       - name: Log in to GHCR (for OCI subchart pulls)
         run: |
           echo "${{ secrets.GHCR_PULL_PAT }}" | \
