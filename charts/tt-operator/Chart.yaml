@@ -26,7 +26,7 @@ dependencies:
   # Source: github.com/tenstorrent/tt-fabric-manager
   - name: ttfm
     alias: tt-fabric-manager
-    version: "0.2.27-187.sha-6d7e08c"
+    version: "0.2.27-156.sha-957f2ad"
     repository: "oci://ghcr.io/tenstorrent/ttfm-helm"
     condition: tt-fabric-manager.enabled
   # tt-dra-driver: Tenstorrent DRA (Dynamic Resource Allocation) driver.
