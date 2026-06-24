@@ -56,7 +56,7 @@ helm upgrade --install tt-operator charts/tt-operator \
 Or via the OCI-published chart (no checkout required):
 
 ```bash
-helm install tt-operator oci://ghcr.io/tenstorrent/helm-charts/tt-operator \
+helm install tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
   --namespace tt-operator-system --create-namespace
 ```
 
@@ -71,9 +71,9 @@ under live CRs). Re-apply CRDs by hand when upgrading to a chart version
 that bumps a subchart owning vendored CRDs:
 
 ```bash
-helm pull oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
+helm pull oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
 kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/crds/
-helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm-charts/tt-operator --version <new> \
+helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> \
   -n tt-operator-system --reuse-values
 ```
 
