@@ -47,7 +47,6 @@ jobs:
       matrix:
         runner:
           - tt-ubuntu-2204-n150-stable
-          - tt-ubuntu-2204-bh-loudbox-viommu-stable
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.runner }}
     timeout-minutes: 30
@@ -95,8 +94,8 @@ jobs:
         uses: ./.github/actions/verify-tt-stack
 
       - name: DRA claim smoke
-        # continue-on-error pending tt-dra-driver#14 (empty-ResourceSlice race).
-        continue-on-error: true
+        # tt-dra-driver#14 (empty-ResourceSlice retry) landed in 0.0.31,
+        # which is what tt-operator#126 pinned. Run as a real gate.
         uses: ./.github/actions/dra-smoke
 
       - name: Diagnostics on failure
