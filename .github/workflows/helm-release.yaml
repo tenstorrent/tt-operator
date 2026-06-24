@@ -9,7 +9,7 @@ name: helm-release
 #   we authenticate the pull with the GHCR_PULL_PAT repo secret. Mirrors the
 #   helm-deps action (the canonical AUTH NOTE).
 #
-# - PUSH  (helm push of the umbrella chart to ghcr.io/.../helm-charts):
+# - PUSH  (helm push of the umbrella chart to ghcr.io/.../helm):
 #   the published artifact lands in tt-operator's own namespace, where
 #   GITHUB_TOKEN already has write — keep using it. PATs we set up have
 #   read scope only.
@@ -117,4 +117,4 @@ jobs:
           helm package charts/tt-operator --destination /tmp/helm-packages
           helm push \
             /tmp/helm-packages/tt-operator-${{ steps.chart.outputs.version }}.tgz \
-            oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+            oci://ghcr.io/${{ github.repository_owner }}/helm
