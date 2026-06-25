@@ -88,3 +88,25 @@ runs:
         grep -E '^tt_driver_initialized' /tmp/metrics.txt | head -5
         grep -qE '^# (HELP|TYPE) ' /tmp/metrics.txt
         echo "OK: tt_driver_initialized=1; /metrics served $(wc -l < /tmp/metrics.txt) lines"
+
+    - name: tt-telemetry /metrics — per-device identity labels present
+      shell: bash
+      run: |
+        set -euo pipefail
+        # US-E2: the collector runs without FSD (fabric_manager_address=""), so it
+        # monitors Ethernet channels directly. Per-device identity still comes from
+        # the PhysicalSystemDescriptor: every device-scoped metric line carries
+        # numeric tray="" + chip="" labels (tt-telemetry MetricLabels::TRAY/CHIP,
+        # FSD-independent). Assert at least one line carries both — proof the
+        # exposition is device-scoped, not just host-level. (tt_driver_initialized
+        # itself only has a host-level hostname label, so we don't key on it.)
+        # Reuses /tmp/metrics.txt captured by the previous step.
+        test -s /tmp/metrics.txt || { echo "::error::/tmp/metrics.txt missing/empty"; exit 1; }
+        if awk '/tray="[0-9]+"/ && /chip="[0-9]+"/ { c++ } END { exit (c?0:1) }' /tmp/metrics.txt; then
+          echo "OK: /metrics carries per-device identity (tray/chip) labels; samples:"
+          awk '/tray="[0-9]+"/ && /chip="[0-9]+"/ { print; if (++c>=3) exit }' /tmp/metrics.txt
+        else
+          echo "::error::no per-device (tray/chip) labelled metric line found in /metrics"
+          grep -E '^tt_' /tmp/metrics.txt | head -20 || true
+          exit 1
+        fi
