@@ -14,7 +14,9 @@ description: |
 inputs:
   chart-ref:
     description: OCI reference of the published umbrella chart.
-    default: oci://ghcr.io/tenstorrent/helm-charts/tt-operator
+    # Canonical publish location per helm-release.yaml (ghcr.io/<owner>/helm) and
+    # the root README. The umbrella is pushed here on every main push + tag.
+    default: oci://ghcr.io/tenstorrent/helm/tt-operator
   release-name:
     description: Helm release name.
     default: tt-operator-oci
