@@ -53,8 +53,12 @@ runs:
         set -euo pipefail
         NS='${{ inputs.namespace }}'
         kubectl -n "$NS" get all 2>/dev/null || true
-        # The controller Deployment is Helm-managed and must be gone.
-        if kubectl -n "$NS" get deploy -o name 2>/dev/null | grep -q 'tt-k8s-driver-manager'; then
+        # The controller Deployment is Helm-managed and must be gone. Capture
+        # first, then match in-shell: `kubectl ... | grep -q` under -o pipefail
+        # would SIGPIPE kubectl when grep matches+exits early, flipping the
+        # result to "absent" exactly when the deploy IS still present.
+        deploys=$(kubectl -n "$NS" get deploy -o name 2>/dev/null || true)
+        if [[ "$deploys" == *tt-k8s-driver-manager* ]]; then
           echo "::error::driver-manager controller Deployment still present after uninstall"
           kubectl -n "$NS" get deploy
           exit 1

@@ -40,7 +40,9 @@ runs:
         # shellcheck disable=SC2206
         extra=( ${{ inputs.extra-args }} )
         helm "${args[@]}" ${extra[@]+"${extra[@]}"}
-        helm status '${{ inputs.release-name }}' -n '${{ inputs.namespace }}' | head -5
+        # No `| head`: composite steps run under `bash -o pipefail`, and head
+        # closing the pipe early SIGPIPEs helm (exit 141) and fails the step.
+        helm status '${{ inputs.release-name }}' -n '${{ inputs.namespace }}'
 
     - name: Controller Deployments still Available + CRDs present
       shell: bash
