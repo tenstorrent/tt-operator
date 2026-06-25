@@ -131,6 +131,46 @@ jobs:
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             "/tmp/rendered-${{ matrix.name }}.yaml"
 
+  image-pin-forwarding:
+    # US-A6: prove the umbrella forwards per-subchart image repository/tag
+    # overrides through to the rendered pod specs (the documented "pin a
+    # feature-branch build" path). Render-only — no cluster needed; the live
+    # default-image pull is already proven by integration-kind.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Build chart deps
+        uses: ./.github/actions/helm-deps
+        with:
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+      - name: Umbrella forwards per-subchart image overrides
+        run: |
+          set -euo pipefail
+          S=pin-test-deadbeef
+          helm template tt-operator charts/tt-operator \
+            --namespace tt-operator-system \
+            --kube-version "${KUBE_VERSION}" \
+            --set tt-k8s-driver-manager.controller.image.repository=ghcr.io/example/ctrl \
+            --set tt-k8s-driver-manager.controller.image.tag="${S}-ctrl" \
+            --set tt-k8s-driver-manager.driver.image.repository=ghcr.io/example/builder \
+            --set tt-k8s-driver-manager.driver.image.tag="${S}-builder" \
+            --set tt-k8s-driver-manager.flasher.image.repository=ghcr.io/example/flasher \
+            --set tt-k8s-driver-manager.flasher.image.tag="${S}-flasher" \
+            --set tt-telemetry.image.repository=ghcr.io/example/telemetry \
+            --set tt-telemetry.image.tag="${S}-telemetry" \
+            > /tmp/pinned.yaml
+          # Controller container image carries the override directly; the
+          # builder/flasher images are forwarded as DRIVER_IMAGE / FLASHER_IMAGE
+          # env on the controller (per the driver-manager chart). Telemetry's
+          # image is a plain repository/tag.
+          assert() { grep -q "$1" /tmp/pinned.yaml || { echo "::error::override not forwarded: $1"; exit 1; }; }
+          assert "ghcr.io/example/ctrl:${S}-ctrl"
+          assert "ghcr.io/example/builder:${S}-builder"
+          assert "ghcr.io/example/flasher:${S}-flasher"
+          assert "ghcr.io/example/telemetry:${S}-telemetry"
+          echo "OK: umbrella forwards controller/driver/flasher/telemetry image overrides"
+
   chart-lock-coherence:
     runs-on: ubuntu-latest
     steps:

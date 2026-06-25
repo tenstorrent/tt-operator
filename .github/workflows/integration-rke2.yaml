@@ -115,6 +115,13 @@ jobs:
           from-version: ${{ steps.preflight.outputs.kmd-version }}
           to-version: "2.8.0"
 
+      # US-A4: with the kmd restored (module loaded), disable the driver
+      # manager in place and prove the device(s) stay allocatable without it.
+      # Last, because it permanently reconfigures the release (VM is torn down
+      # at job end anyway).
+      - name: Pre-installed-driver mode (device persists without the manager)
+        uses: ./.github/actions/verify-preinstalled-driver
+
       - name: Diagnostics on failure
         if: failure()
         uses: ./.github/actions/integration-failure-diagnostics

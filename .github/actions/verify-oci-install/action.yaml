@@ -1,0 +1,61 @@
+name: 'Verify OCI-published chart install'
+description: |
+  Install the umbrella straight from the OCI-published chart with no checkout
+  (US-A3, stretch) — the exact command the repo README documents. Installs
+  driver-manager-only so the install stays robust on kind (no cert-manager /
+  DRA prereqs, no private images required to reach object creation), then
+  asserts the release deployed and the driver-manager controller Deployment
+  object was created. Operand pods may ImagePullBackOff (private images, not
+  side-loaded) — only the OCI pull + install path is under test here.
+
+  Assumes the caller is already logged in to GHCR (kind-cluster does this) so
+  the private OCI chart can be pulled.
+
+inputs:
+  chart-ref:
+    description: OCI reference of the published umbrella chart.
+    default: oci://ghcr.io/tenstorrent/helm-charts/tt-operator
+  release-name:
+    description: Helm release name.
+    default: tt-operator-oci
+  namespace:
+    description: Release namespace.
+    default: tt-operator-oci
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      env:
+        CHART: ${{ inputs.chart-ref }}
+        REL: ${{ inputs.release-name }}
+        NS: ${{ inputs.namespace }}
+      run: |
+        set -euo pipefail
+
+        echo "::group::helm install from ${CHART}"
+        # No --version: resolves the latest published version, matching the
+        # README's documented one-liner. Everything but the driver manager is
+        # disabled to avoid external prereqs (cert-manager, DRA) on kind.
+        helm install "$REL" "$CHART" -n "$NS" --create-namespace \
+          --set node-feature-discovery.enabled=false \
+          --set tt-fabric-manager.enabled=false \
+          --set tt-dra-driver.enabled=false \
+          --set tt-telemetry.enabled=false \
+          --set jobset.enabled=false \
+          --set kubepmix.enabled=false
+        echo "::endgroup::"
+
+        helm list -n "$NS"
+        # Release must be deployed.
+        helm status "$REL" -n "$NS" | grep -Eq 'STATUS: deployed' \
+          || { echo "::error::OCI release is not in 'deployed' status"; exit 1; }
+
+        # The driver-manager controller Deployment object must exist.
+        sleep 5
+        kubectl -n "$NS" get deploy -o name
+        kubectl -n "$NS" get deploy -o name | grep -q 'tt-k8s-driver-manager' \
+          || { echo "::error::driver-manager controller Deployment not created from the OCI chart"; exit 1; }
+        echo "OK: OCI-published chart installs and renders the driver manager"
+
+        helm uninstall "$REL" -n "$NS" || true
