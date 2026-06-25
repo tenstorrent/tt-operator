@@ -48,9 +48,12 @@ runs:
         echo "=== controller Deployment must be removed ==="
         gone=0
         for _ in $(seq 1 24); do
-          if ! kubectl -n "$NS" get deploy -o name | grep -q 'tt-k8s-driver-manager'; then
-            gone=1; break
-          fi
+          # Capture then match (avoid pipefail+SIGPIPE on `kubectl | grep -q`).
+          deploys=$(kubectl -n "$NS" get deploy -o name 2>/dev/null || true)
+          case "$deploys" in
+            *tt-k8s-driver-manager*) ;;
+            *) gone=1; break ;;
+          esac
           sleep 5
         done
         kubectl -n "$NS" get deploy -o name || true

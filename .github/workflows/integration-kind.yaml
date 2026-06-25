@@ -212,6 +212,9 @@ jobs:
             crd-present: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
           - name: telemetry-only
             cert-manager: "false"
+            # podMonitor renders a monitoring.coreos.com PodMonitor that needs
+            # the prometheus-operator CRDs (absent on kind) — disabled here just
+            # as the RKE2 install does (rke2-install-values).
             set-args: >-
               --set node-feature-discovery.enabled=false
               --set tt-k8s-driver-manager.enabled=false
@@ -219,6 +222,7 @@ jobs:
               --set tt-dra-driver.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
             present: "telemetry"
             absent: "nfd driver-manager fabric-manager dra jobset kubepmix"
           - name: dra-stack
@@ -227,11 +231,16 @@ jobs:
               --set node-feature-discovery.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
             present: "driver-manager fabric-manager dra telemetry"
             absent: "nfd jobset kubepmix"
           - name: all-on
             cert-manager: "true"
-            set-args: ""
+            # Everything enabled; only the prometheus-operator-dependent
+            # PodMonitor is dropped (no prometheus-operator CRDs on kind), same
+            # as the RKE2 all-on install.
+            set-args: >-
+              --set tt-telemetry.podMonitor.enabled=false
             present: "nfd driver-manager fabric-manager dra telemetry jobset kubepmix"
             absent: ""
           - name: preinstalled-driver
@@ -242,6 +251,7 @@ jobs:
               --set tt-dra-driver.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
             present: "nfd telemetry"
             absent: "driver-manager fabric-manager dra jobset kubepmix"
             crd-absent: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"

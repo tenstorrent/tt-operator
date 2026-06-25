@@ -47,15 +47,24 @@ runs:
         echo "::endgroup::"
 
         helm list -n "$NS"
-        # Release must be deployed.
-        helm status "$REL" -n "$NS" | grep -Eq 'STATUS: deployed' \
-          || { echo "::error::OCI release is not in 'deployed' status"; exit 1; }
+        # Release must be deployed. Capture then match with a bash glob — piping
+        # helm into `grep -q` trips pipefail via SIGPIPE (grep closes the pipe
+        # before helm finishes writing NOTES), a false failure.
+        status=$(helm status "$REL" -n "$NS")
+        echo "$status"
+        case "$status" in
+          *"STATUS: deployed"*) ;;
+          *) echo "::error::OCI release is not in 'deployed' status"; exit 1 ;;
+        esac
 
         # The driver-manager controller Deployment object must exist.
         sleep 5
-        kubectl -n "$NS" get deploy -o name
-        kubectl -n "$NS" get deploy -o name | grep -q 'tt-k8s-driver-manager' \
-          || { echo "::error::driver-manager controller Deployment not created from the OCI chart"; exit 1; }
+        deploys=$(kubectl -n "$NS" get deploy -o name)
+        echo "$deploys"
+        case "$deploys" in
+          *tt-k8s-driver-manager*) ;;
+          *) echo "::error::driver-manager controller Deployment not created from the OCI chart"; exit 1 ;;
+        esac
         echo "OK: OCI-published chart installs and renders the driver manager"
 
         helm uninstall "$REL" -n "$NS" || true
