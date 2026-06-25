@@ -137,6 +137,23 @@ jobs:
           fi
           echo "OK"
 
+      # Day-2 / reconcile coverage that needs no Tenstorrent hardware. These run
+      # against the driver-only install above; the hardware-dependent real driver
+      # upgrade (actual kmd version swap) lives in integration-rke2.yaml.
+      - name: Driver policy reconcile (idempotency + nodeSelector)
+        uses: ./.github/actions/driver-policy-reconcile
+
+      # Firmware path is reconcile-only here (no real flash) — see action.
+      - name: Firmware policy reconcile
+        uses: ./.github/actions/firmware-policy-reconcile
+
+      - name: Helm upgrade in place converges
+        uses: ./.github/actions/helm-upgrade-verify
+
+      # Tears the release down — keep last (before diagnostics).
+      - name: Helm uninstall is clean
+        uses: ./.github/actions/uninstall-verify
+
       - name: Diagnostics on failure
         if: failure()
         run: |

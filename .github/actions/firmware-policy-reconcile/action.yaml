@@ -1,0 +1,66 @@
+name: Firmware policy reconcile (kind, no real flash)
+description: |
+  Controller reconcile check for TenstorrentFirmwarePolicy that needs no
+  Tenstorrent hardware and flashes nothing (US-B3). Apply a minimal valid policy
+  with drain disabled, then assert the controller reconciled it.
+
+  From tt-k8s-driver-manager source: a FirmwarePolicy spawns one per-node *Job*
+  (NOT a DaemonSet, and there is no .status.daemonSet) labelled
+  firmware.tenstorrent.com/cr=<cr>. We assert that Job is created. drain.enable
+  is false on purpose: with drain on, the first reconcile would cordon + drain the
+  node — on a single kind node that could evict the operator itself; with drain
+  off the controller goes straight to spawning the flash Job in one pass.
+
+  No real flashing happens: there's no device, and the Job's pod (a privileged
+  flasher) would fail to pull/run on kind — we only assert the controller produced
+  the flash Job, and never wait for the pod. Runs after the namespace ImagePull
+  gate so the flasher image's expected absence in kind doesn't trip it.
+
+inputs:
+  namespace:
+    description: Release namespace (where the controller spawns flash Jobs).
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - name: Apply a TenstorrentFirmwarePolicy; assert the controller spawns a flash Job
+      shell: bash
+      run: |
+        set -euo pipefail
+        CR=ci-fw-smoke
+        cat > /tmp/ttfwp.yaml <<EOF
+        apiVersion: firmware.tenstorrent.com/v1alpha1
+        kind: TenstorrentFirmwarePolicy
+        metadata:
+          name: ${CR}
+        spec:
+          version: "19.8.0"
+          nodeSelector:
+            matchLabels:
+              feature.node.kubernetes.io/pci-1200_1e52.present: "true"
+          upgradePolicy:
+            drain:
+              enable: false
+        EOF
+        trap 'kubectl delete tenstorrentfirmwarepolicies.firmware.tenstorrent.com '"$CR"' --ignore-not-found --wait=false || true' EXIT
+
+        kubectl apply -f /tmp/ttfwp.yaml
+
+        # The controller creates one flash Job per matched node, labelled
+        # firmware.tenstorrent.com/cr=<cr>. Search all namespaces (the controller
+        # picks the Job namespace). No hardware needed to CREATE the Job; the pod
+        # would fail on kind, which we don't wait for.
+        found=""
+        for _ in $(seq 1 24); do
+          n=$(kubectl get jobs -A -l "firmware.tenstorrent.com/cr=${CR}" -o name 2>/dev/null | wc -l | tr -d ' ')
+          [ "$n" -ge 1 ] && { found=yes; break; }
+          sleep 5
+        done
+        kubectl get jobs -A -l "firmware.tenstorrent.com/cr=${CR}" -o wide || true
+        kubectl get tenstorrentfirmwarepolicies.firmware.tenstorrent.com "$CR" -o yaml | sed -n '/status:/,$p' || true
+        if [ -z "$found" ]; then
+          echo "::error::controller did not create a flash Job for the FirmwarePolicy within ~2m"
+          exit 1
+        fi
+        echo "OK: controller reconciled TenstorrentFirmwarePolicy — flash Job created (no real flash on kind)"

@@ -1,0 +1,54 @@
+name: Helm upgrade verify
+description: |
+  Day-2 check: `helm upgrade` the already-installed umbrella release and confirm
+  it converges — the controller Deployment(s) stay Available and the CRDs are
+  still present. By default upgrades in place with --reuse-values (re-renders the
+  same release with its existing values); pass extra-args to change values.
+
+  Does NOT pass `helm --wait`: the per-CR installer DaemonSet never reaches Ready
+  in kind (no kernel build tree), so --wait would time out on a healthy cluster.
+  We gate on the Deployments instead. CRDs under crds/ are install-only in Helm
+  and are intentionally NOT re-applied on upgrade (documented behavior) — we
+  assert they persist, which they do.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  release-name:
+    description: Helm release name.
+    default: tt-operator
+  reuse-values:
+    description: 'Pass --reuse-values ("true"/"false") to re-render with the existing release values.'
+    default: "true"
+  extra-args:
+    description: 'Optional extra helm args (word-split; bracket/space-free — use a values file otherwise).'
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: helm upgrade in place
+      shell: bash
+      run: |
+        set -ex
+        args=(upgrade '${{ inputs.release-name }}' charts/tt-operator -n '${{ inputs.namespace }}')
+        if [ '${{ inputs.reuse-values }}' = 'true' ]; then
+          args+=(--reuse-values)
+        fi
+        # Caller-supplied flags (bracket/space-free). Intentional word-split.
+        # shellcheck disable=SC2206
+        extra=( ${{ inputs.extra-args }} )
+        helm "${args[@]}" ${extra[@]+"${extra[@]}"}
+        helm status '${{ inputs.release-name }}' -n '${{ inputs.namespace }}' | head -5
+
+    - name: Controller Deployments still Available + CRDs present
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        kubectl -n "$NS" get deployments
+        kubectl -n "$NS" wait --for=condition=Available --timeout=5m deployments --all
+        kubectl get crd tenstorrentdriverpolicies.driver.tenstorrent.com
+        kubectl get crd tenstorrentfirmwarepolicies.firmware.tenstorrent.com
+        echo "OK: release upgraded; controller Deployments Available; CRDs intact"

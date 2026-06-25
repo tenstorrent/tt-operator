@@ -1,0 +1,110 @@
+name: Driver policy reconcile (idempotency + nodeSelector)
+description: |
+  Controller reconcile-logic checks that need no Tenstorrent hardware (kind
+  tier):
+    - idempotency: re-applying an unchanged TenstorrentDriverPolicy doesn't churn
+      — the controller keeps the *same* per-CR installer DaemonSet object (same
+      name + uid), it doesn't recreate or proliferate it.
+    - nodeSelector is honored: a policy whose nodeSelector matches no node yields
+      an installer DaemonSet with 0 desired pods (or none at all), so the
+      operator never schedules onto non-Tenstorrent nodes.
+
+  The kmd build itself fails in kind (no kernel headers) — irrelevant here; both
+  assertions are about the controller's reconcile decisions, which happen
+  independently of whether the build succeeds. Cleans up the CRs it creates.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+
+runs:
+  using: composite
+  steps:
+    - name: Idempotency — re-apply is a no-op for the installer DaemonSet
+      shell: bash
+      run: |
+        set -euo pipefail
+        NS='${{ inputs.namespace }}'
+        CR=reconcile-idem
+        cat > /tmp/ttdp-idem.yaml <<EOF
+        apiVersion: driver.tenstorrent.com/v1alpha1
+        kind: TenstorrentDriverPolicy
+        metadata:
+          name: ${CR}
+        spec:
+          version: "2.8.0"
+          nodeSelector: {}
+          upgradePolicy:
+            drain:
+              enable: false
+              fullNode: false
+            forceUnload: false
+        EOF
+        trap 'kubectl delete ttdp '"$CR"' --ignore-not-found --wait=false || true' EXIT
+
+        kubectl apply -f /tmp/ttdp-idem.yaml
+        # Wait for the controller to record the per-CR DaemonSet.
+        ds=""
+        for _ in $(seq 1 36); do
+          ds=$(kubectl get ttdp "$CR" -o jsonpath='{.status.daemonSet}' 2>/dev/null || true)
+          [ -n "$ds" ] && break
+          sleep 5
+        done
+        [ -n "$ds" ] || { echo "::error::controller never recorded status.daemonSet for $CR"; kubectl get ttdp "$CR" -o yaml; exit 1; }
+        uid0=$(kubectl -n "$NS" get ds "$ds" -o jsonpath='{.metadata.uid}')
+        echo "installer ds=$ds uid=$uid0"
+
+        # Re-apply the identical spec; the controller must not recreate it.
+        kubectl apply -f /tmp/ttdp-idem.yaml
+        sleep 20
+        ds1=$(kubectl get ttdp "$CR" -o jsonpath='{.status.daemonSet}')
+        uid1=$(kubectl -n "$NS" get ds "$ds1" -o jsonpath='{.metadata.uid}' 2>/dev/null || true)
+        echo "after re-apply: ds=$ds1 uid=$uid1"
+        if [ "$ds" != "$ds1" ] || [ "$uid0" != "$uid1" ]; then
+          echo "::error::re-applying an unchanged policy churned the installer DaemonSet ($ds/$uid0 -> $ds1/$uid1)"
+          exit 1
+        fi
+        echo "OK: idempotent re-apply — installer DaemonSet unchanged"
+
+    - name: nodeSelector honored — nothing scheduled on non-matching nodes
+      shell: bash
+      run: |
+        set -euo pipefail
+        NS='${{ inputs.namespace }}'
+        CR=reconcile-noselect
+        cat > /tmp/ttdp-noselect.yaml <<EOF
+        apiVersion: driver.tenstorrent.com/v1alpha1
+        kind: TenstorrentDriverPolicy
+        metadata:
+          name: ${CR}
+        spec:
+          version: "2.8.0"
+          nodeSelector:
+            matchLabels:
+              tenstorrent.com/this-label-matches-no-node: "true"
+          upgradePolicy:
+            drain:
+              enable: false
+              fullNode: false
+            forceUnload: false
+        EOF
+        trap 'kubectl delete ttdp '"$CR"' --ignore-not-found --wait=false || true' EXIT
+
+        kubectl apply -f /tmp/ttdp-noselect.yaml
+        # The controller may create an installer DS (desiring 0 pods) or none at
+        # all; either honors the selector. If one exists, it must desire 0 pods.
+        ds=""
+        for _ in $(seq 1 24); do
+          ds=$(kubectl get ttdp "$CR" -o jsonpath='{.status.daemonSet}' 2>/dev/null || true)
+          [ -n "$ds" ] && break
+          sleep 5
+        done
+        if [ -n "$ds" ]; then
+          desired=$(kubectl -n "$NS" get ds "$ds" -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0)
+          echo "installer ds=$ds desiredNumberScheduled=${desired:-0}"
+          [ "${desired:-0}" -eq 0 ] || { echo "::error::policy with a non-matching nodeSelector scheduled ${desired} pod(s)"; exit 1; }
+          echo "OK: non-matching nodeSelector scheduled 0 pods"
+        else
+          echo "OK: controller created no installer DaemonSet for a non-matching nodeSelector"
+        fi

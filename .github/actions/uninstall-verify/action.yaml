@@ -1,0 +1,62 @@
+name: Helm uninstall verify
+description: |
+  Day-2 teardown check: remove the policy CRs (so the controller can garbage-
+  collect their per-CR installer DaemonSets while it's still running), then
+  `helm uninstall` the umbrella release and confirm a clean removal — the Helm
+  release record is gone and the chart's controller workload is gone from the
+  namespace.
+
+  Scope note: asserts that Helm removed what Helm installed. CRDs installed from
+  crds/ are intentionally left behind by Helm on uninstall (documented Helm
+  behavior), so their presence afterwards is expected, not a leak; the host-side
+  tt-kmd loaded by the operator also persists (it lives in the host kernel, not a
+  Helm resource).
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  release-name:
+    description: Helm release name.
+    default: tt-operator
+
+runs:
+  using: composite
+  steps:
+    - name: Remove policy CRs first (controller cascades their installer DaemonSets)
+      shell: bash
+      run: |
+        set -ex
+        # CRs are user-applied (not Helm-managed); delete them while the
+        # controller is still up so its finalizers can clean up the per-CR
+        # installer DaemonSets before we remove the controller itself.
+        # Best-effort + bounded: a wedged finalizer in kind must not hang the job.
+        kubectl delete tenstorrentdriverpolicies.driver.tenstorrent.com --all \
+          --ignore-not-found --timeout=2m || true
+        kubectl delete tenstorrentfirmwarepolicies.firmware.tenstorrent.com --all \
+          --ignore-not-found --timeout=2m || true
+
+    - name: helm uninstall
+      shell: bash
+      run: |
+        set -ex
+        helm uninstall '${{ inputs.release-name }}' -n '${{ inputs.namespace }}' --wait --timeout 5m
+        # Release record is gone.
+        if helm status '${{ inputs.release-name }}' -n '${{ inputs.namespace }}' 2>/dev/null; then
+          echo "::error::helm release still present after uninstall"
+          exit 1
+        fi
+
+    - name: Chart workload removed from the namespace
+      shell: bash
+      run: |
+        set -euo pipefail
+        NS='${{ inputs.namespace }}'
+        kubectl -n "$NS" get all 2>/dev/null || true
+        # The controller Deployment is Helm-managed and must be gone.
+        if kubectl -n "$NS" get deploy -o name 2>/dev/null | grep -q 'tt-k8s-driver-manager'; then
+          echo "::error::driver-manager controller Deployment still present after uninstall"
+          kubectl -n "$NS" get deploy
+          exit 1
+        fi
+        echo "OK: release removed; driver-manager controller Deployment gone"
