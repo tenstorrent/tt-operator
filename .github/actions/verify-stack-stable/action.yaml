@@ -1,0 +1,58 @@
+name: Verify stack stability (no new restarts)
+description: |
+  Final stability gate, run after the stack is up (post verify-tt-stack). The
+  NVIDIA gpu-operator e2e asserts its operands don't restart once healthy; we do
+  the same, but tolerantly. The tt-telemetry collector legitimately crash-loops
+  *before* the driver is installed (it exits when no device is present — chart
+  default retry_on_driver_failure=false), so those startup restarts are expected
+  and already on the clock by the time we get here. Rather than demand
+  restartCount==0, snapshot the per-container restart counts, wait an observation
+  window, and fail only if any count *increases* — i.e. the stack is still
+  flapping now, not that it ever did.
+
+  Note: keyed on pod/container name, so a pod fully replaced under a new name in
+  the window isn't compared (a separate concern from a container restarting in
+  place); the diagnostics action captures pod churn on failure.
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  window-seconds:
+    description: Observation window over which no container may restart.
+    default: "60"
+
+runs:
+  using: composite
+  steps:
+    - name: No new container restarts over the window
+      shell: bash
+      run: |
+        set -euo pipefail
+        NS='${{ inputs.namespace }}'
+        WINDOW='${{ inputs.window-seconds }}'
+
+        # pod/container -> restartCount, across regular and init containers.
+        snapshot() {
+          kubectl -n "$NS" get pods -o json | jq -r '
+            .items[] | .metadata.name as $p
+            | ((.status.containerStatuses // []) + (.status.initContainerStatuses // []))[]
+            | "\($p)/\(.name) \(.restartCount)"' | sort
+        }
+
+        echo "=== restart counts (t0) ==="
+        before=$(snapshot); echo "$before"
+        sleep "$WINDOW"
+        echo "=== restart counts (t0 + ${WINDOW}s) ==="
+        after=$(snapshot); echo "$after"
+
+        # Join on the pod/container key; flag any container whose count rose.
+        regressed=$(join -j 1 <(echo "$before") <(echo "$after") \
+          | awk '$3 > $2 { print $1 ": " $2 " -> " $3 }')
+        if [ -n "$regressed" ]; then
+          echo "::error::container(s) restarted during the ${WINDOW}s stability window:"
+          echo "$regressed"
+          kubectl -n "$NS" get pods -o wide
+          exit 1
+        fi
+        echo "OK: no container restarted over ${WINDOW}s — stack is stable"
