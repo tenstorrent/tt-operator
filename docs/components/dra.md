@@ -1,17 +1,17 @@
 # Device allocation (DRA)
 
-**Status: Beta** — installed by default and usable for evaluation; some
+**Status: Beta.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
 
 The DRA driver exposes Tenstorrent devices to workloads using Kubernetes
 [Dynamic Resource Allocation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/).
-A per-node kubelet plugin discovers devices and publishes them as
-`ResourceSlice` objects under the `tenstorrent.com` device class; a pod then
-requests a device with a `ResourceClaim`.
+A per-node kubelet plugin discovers devices and publishes them as `ResourceSlice`
+objects under the `tenstorrent.com` device class. A pod then requests a device
+with a `ResourceClaim`.
 
 ## Requirements
 
-- Kubernetes **1.33+** with Dynamic Resource Allocation available on the API
+- Kubernetes 1.33 or later with Dynamic Resource Allocation available on the API
   server and kubelet.
 - The [fabric manager](fabric-manager.md) reachable, since the plugin resolves
   devices from topology before publishing them.
@@ -57,7 +57,7 @@ kubectl get resourceclaim tt-claim -o yaml   # .status.allocation once bound
 
 ```{note}
 The driver only publishes devices once topology resolves. On a host with no
-staged fabric topology, `ResourceSlice`s can be empty and claims will not bind —
-this is an environment limitation rather than a failure. Allocation behavior is
-maturing.
+staged fabric topology the `ResourceSlice` set can be empty and claims will not
+bind. This is an environment limitation rather than a failure. Allocation
+behavior is maturing.
 ```

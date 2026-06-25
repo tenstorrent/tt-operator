@@ -1,14 +1,13 @@
 # Tenstorrent Operator
 
-`tt-operator` is the umbrella Helm chart that brings Tenstorrent accelerators
-under Kubernetes management. It installs and coordinates the components that
-discover Tenstorrent devices, install and upgrade the kernel-mode driver
-(`tt-kmd`), flash firmware, export device telemetry, and expose devices to
-workloads — the Tenstorrent counterpart to a vendor GPU operator.
+`tt-operator` is the umbrella Helm chart that brings Tenstorrent devices under
+Kubernetes management. It installs and coordinates the components that discover
+Tenstorrent devices, install and upgrade the kernel-mode driver (`tt-kmd`), flash
+firmware, export device telemetry, and make devices available to workloads.
 
-This documentation is written for **cluster administrators and platform/SRE
-users** who install and operate tt-operator. It is organized around the tasks
-you actually perform, from first install through day-2 operations.
+This documentation is written for cluster administrators and platform operators
+who install and run tt-operator. It is organized around the tasks you perform,
+from first install through day-2 operations.
 
 ```{toctree}
 :maxdepth: 1
@@ -23,7 +22,7 @@ installation
 
 ```{toctree}
 :maxdepth: 1
-:caption: Configure & operate
+:caption: Configure and operate
 
 configuration
 components/index
@@ -36,14 +35,14 @@ troubleshooting
 | Status | Meaning |
 |---|---|
 | **Supported** | Generally available in this release and covered by the documented workflows. |
-| **Beta** | Installed by default and usable for evaluation; some capabilities are still maturing and may change. |
+| **Beta** | Installed by default and usable for evaluation. Some capabilities are still maturing and may change. |
 
 | Component | Capability | Status |
 |---|---|---|
 | Node Feature Discovery | Labels nodes that have Tenstorrent devices | Supported |
-| Driver manager | Installs / upgrades / scopes `tt-kmd` via policy CRDs | Supported |
-| Firmware | Flashes device firmware via a policy CRD | Supported |
+| Driver manager | Installs, upgrades, and scopes `tt-kmd` via policy resources | Supported |
+| Firmware | Flashes device firmware via a policy resource | Supported |
 | Telemetry | Exposes a Prometheus `/metrics` endpoint | Supported |
-| Fabric manager | Resolves inter-card / inter-host topology | Beta |
+| Fabric manager | Resolves fabric topology across devices and hosts | Beta |
 | Device allocation (DRA) | Publishes devices as schedulable resources | Beta |
-| Multi-node scheduling | JobSet + PMIx wiring for multi-node jobs | Beta |
+| Multi-node scheduling | JobSet and PMIx wiring for multi-node jobs | Beta |

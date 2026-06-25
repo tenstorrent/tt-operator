@@ -16,8 +16,9 @@ feature.node.kubernetes.io/pci-1200_1e52.present=true
 ```
 
 to every node that has a Tenstorrent device (PCI vendor `1e52`). The chart
-restricts NFD to the **PCI source only**, so it does not add the full set of
-CPU/kernel/system labels — keeping node labels focused and the footprint small.
+restricts NFD to the PCI source only, so it does not add the full set of CPU,
+kernel, and system labels. This keeps node labels focused and the footprint
+small.
 
 ## Verify
 
@@ -25,20 +26,20 @@ CPU/kernel/system labels — keeping node labels focused and the footprint small
 kubectl get nodes -l feature.node.kubernetes.io/pci-1200_1e52.present=true
 ```
 
-Every node with a Tenstorrent card should be listed. If a node you expect is
-missing, confirm the device is visible on the host (`lspci`) and that the NFD
+Every node with a Tenstorrent device should be listed. If a node you expect is
+missing, confirm the device is visible on the host with `lspci` and that the NFD
 worker pod is running on that node.
 
 ## Configuration
 
-NFD is enabled by default. To turn it off (for example, if you already run NFD
-cluster-wide), set:
+NFD is enabled by default. To turn it off, for example if you already run NFD
+cluster-wide, set:
 
 ```bash
 --set node-feature-discovery.enabled=false
 ```
 
-The feature/label sources are restricted to `pci` via
+The feature and label sources are restricted to `pci` via
 `node-feature-discovery.worker.config.core.featureSources` and `labelSources`.
 See the [Configuration reference](../configuration.md) for the full set of NFD
 values.

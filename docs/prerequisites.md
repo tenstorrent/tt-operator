@@ -20,33 +20,20 @@ If you do not need `kubepmix`, you can skip cert-manager by disabling it:
 
 ## Kubernetes version
 
-- **1.27+** for the core stack.
-- **1.33+** if you use the Dynamic Resource Allocation driver *(beta)*, which
-  relies on the `DynamicResourceAllocation` feature being available on the
-  API server and kubelet.
-
-## Node Feature Discovery chart repo (checkout installs only)
-
-When installing from a checkout, register the NFD chart repo so
-`helm dependency build` can resolve it:
-
-```bash
-helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
-helm repo update
-```
-
-Installing from the published OCI chart does not require this — dependencies are
-bundled.
+- 1.27 or later for the core stack.
+- 1.33 or later if you use the Dynamic Resource Allocation driver *(beta)*, which
+  relies on the `DynamicResourceAllocation` feature being available on the API
+  server and kubelet.
 
 ## Registry access
 
 The component images are hosted on GitHub Container Registry (`ghcr.io`). Nodes
-must be able to pull from it (directly or through your mirror/pull secret).
-Pods stuck in `ImagePullBackOff` almost always indicate a registry-access gap —
-see [Troubleshooting](troubleshooting.md).
+must be able to pull from it, directly or through your mirror or pull secret.
+Pods stuck in `ImagePullBackOff` almost always indicate a registry-access gap.
+See [Troubleshooting](troubleshooting.md).
 
 ## Host requirements for the driver
 
 The driver manager builds `tt-kmd` against the running kernel on each target
-node, so nodes must have the matching kernel headers/build tree available. See
-the [Driver manager](components/driver-manager.md) component page.
+node, so nodes must have the matching kernel headers available. See the
+[Driver manager](components/driver-manager.md) component page.

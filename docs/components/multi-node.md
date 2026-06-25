@@ -1,6 +1,6 @@
-# Multi-node scheduling (JobSet + PMIx)
+# Multi-node scheduling (JobSet and PMIx)
 
-**Status: Beta** — installed by default and usable for evaluation; some
+**Status: Beta.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
 
 Two components support multi-node jobs on Tenstorrent hardware:
@@ -9,15 +9,15 @@ Two components support multi-node jobs on Tenstorrent hardware:
   groups related Jobs into a single managed unit, so a multi-node run is created,
   scheduled, and cleaned up as one object.
 - **kubepmix** is a mutating admission webhook that injects PMIx environment
-  variables into participating Jobs/pods, wiring up the process management
-  interface multi-node ranks use to find each other.
+  variables into participating Jobs and pods, wiring up the process management
+  interface that multi-node ranks use to find each other.
 
 ## Prerequisite
 
-kubepmix's webhook is served over TLS issued by **cert-manager**, so cert-manager
-must be installed before tt-operator (see [Prerequisites](../prerequisites.md)).
-The webhook resources are created in the `kube-pmix` namespace by default
-(`kubepmix.namespace`).
+The kubepmix webhook is served over TLS issued by cert-manager, so cert-manager
+must be installed before tt-operator. See [Prerequisites](../prerequisites.md).
+The webhook resources are created in the `kube-pmix` namespace by default, set by
+`kubepmix.namespace`.
 
 ## Opting a Job in
 
@@ -39,7 +39,7 @@ kubectl get mutatingwebhookconfiguration kube-pmix
 ```
 
 ```{note}
-The components and webhook wiring are available now; running a real co-scheduled
-multi-node job end-to-end is maturing. To install without them, set
+The components and webhook wiring are available now. Running a real co-scheduled
+multi-node job end to end is maturing. To install without them, set
 `--set jobset.enabled=false` and `--set kubepmix.enabled=false`.
 ```
