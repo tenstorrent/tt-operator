@@ -102,7 +102,11 @@ jobs:
         uses: ./.github/actions/verify-stack-stable
 
       - name: DRA claim smoke
-        # continue-on-error pending tt-dra-driver#14 (empty-ResourceSlice race).
+        # Non-gating: tt-dra-driver#14 (retry GetTopology on NOT_DISCOVERED)
+        # landed 2026-06-16 and ships in the pinned 0.0.31, so the old
+        # empty-ResourceSlice bug is fixed — but the claim still can't allocate
+        # on a runner with no staged fabric topology. Kept continue-on-error
+        # until a topology-equipped runner confirms a green allocation.
         continue-on-error: true
         uses: ./.github/actions/dra-smoke
 
