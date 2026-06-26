@@ -1,0 +1,77 @@
+name: docs
+
+# Build the Sphinx/MyST documentation as a gate on every change, and deploy the
+# versioned site to GitHub Pages on main + release tags. The published site is
+# what docs.tenstorrent.com/<project_code> points at.
+#
+# Adopting this template:
+#   1. Copy this file and the docs/ directory into your repo.
+#   2. Edit the project settings at the top of docs/conf.py.
+#   3. Enable GitHub Pages with "GitHub Actions" as the source (Settings -> Pages).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Build gate on every PR/push: warnings are errors, plus a link check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install docs dependencies
+        run: pip install -r docs/requirements.txt
+      - name: Build (warnings are errors)
+        run: sphinx-build -W --keep-going -b html docs docs/_build/html
+      - name: Link check
+        run: sphinx-build -b linkcheck docs docs/_build/linkcheck
+        continue-on-error: true
+
+  deploy:
+    # Versioned GitHub Pages deploy, only on main + release tags.
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install docs dependencies
+        run: pip install -r docs/requirements.txt
+      - name: Build all versions
+        run: bash docs/build-versions.sh output
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
