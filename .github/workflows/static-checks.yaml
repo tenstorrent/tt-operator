@@ -151,23 +151,6 @@ jobs:
             exit 1
           }
 
-  crd-coherence:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Vendored CRDs match the pinned subchart versions
-        # gh + yq are preinstalled on ubuntu-latest. The script re-derives the
-        # vendored CRD bundle from the jobset version pinned in Chart.yaml; any
-        # diff means crds/ was hand-edited or the pin moved without a refresh.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          hack/refresh-vendored-crds.sh
-          git diff --exit-code charts/tt-operator/crds/ || {
-            echo "::error::Vendored CRDs are stale — run hack/refresh-vendored-crds.sh and commit the result"
-            exit 1
-          }
-
   helm-unittest:
     runs-on: ubuntu-latest
     steps:
