@@ -39,7 +39,7 @@ operator cordons and drains the node, rebuilds and reloads `tt-kmd`, then
 uncordons it. Driver upgrades also pause telemetry first. The controller sets the
 `tenstorrent.com/deploy.tt-telemetry` node gate to drain the collector so it
 releases the device, then restores it once the new driver is ready. See the
-[Driver Manager](components/driver-manager.md) component page.
+[Driver Manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) component page.
 
 ## Uninstall
 

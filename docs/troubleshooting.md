@@ -26,7 +26,7 @@ resources (`monitoring.coreos.com`) are not present, and tt-telemetry ships a
 ```
 
 You can still scrape `/metrics` by other means. See
-[Telemetry](components/telemetry.md).
+[Telemetry](https://docs.tenstorrent.com/tt-telemetry/).
 
 ## Pods stuck in ImagePullBackOff
 
@@ -71,7 +71,7 @@ kubectl -n tt-operator-system logs <driver-builder-pod>
 kubectl get resourceslices
 ```
 
-If there are no device entries, the [DRA Driver](components/dra.md) has no
+If there are no device entries, the [DRA Driver](https://docs.tenstorrent.com/tt-dra-driver/) has no
 resolvable fabric topology on the node, so it publishes nothing and the claim
 cannot bind. This is an environment limitation, not a fault, and this path is
 beta.
@@ -80,4 +80,4 @@ beta.
 
 This is expected. The device briefly disappears while `tt-kmd` is reinstalled and
 the collector restarts. `/metrics` becomes healthy again once the driver is back.
-See [Telemetry](components/telemetry.md).
+See [Telemetry](https://docs.tenstorrent.com/tt-telemetry/).

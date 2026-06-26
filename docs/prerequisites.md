@@ -36,4 +36,4 @@ See [Troubleshooting](troubleshooting.md).
 
 The Driver Manager builds `tt-kmd` against the running kernel on each target
 node, so nodes must have the matching kernel headers available. See the
-[Driver Manager](components/driver-manager.md) component page.
+[Driver Manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) component page.

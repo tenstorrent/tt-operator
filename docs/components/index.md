@@ -1,21 +1,21 @@
 # Components
 
-tt-operator is composed of independently toggleable components. Each page below
-covers what the component does, how to configure it, and how to confirm it is
-working. Every component can be enabled or disabled with `<name>.enabled`. See
-[Installation](../installation.md).
+tt-operator brings together the components below. Each is documented by its
+owners on its own page in the Cloud-Native Support documentation.
+
+| Component | Status | Documentation |
+|---|---|---|
+| Node Feature Discovery | Supported | [this site](node-feature-discovery.md) |
+| Driver Manager | Supported | [tt-k8s-driver-manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) |
+| Firmware | Supported | [tt-k8s-driver-manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) |
+| Telemetry | Supported | [tt-telemetry](https://docs.tenstorrent.com/tt-telemetry/) |
+| Fabric Manager | Beta | [tt-fabric-manager](https://docs.tenstorrent.com/tt-fabric-manager/) |
+| Device Allocation | Beta | [tt-dra-driver](https://docs.tenstorrent.com/tt-dra-driver/) |
+| Multi-Node Scheduling | Beta | [this site](multi-node.md) |
 
 ```{toctree}
-:maxdepth: 1
+:hidden:
 
 node-feature-discovery
-driver-manager
-firmware
-telemetry
-Fabric Manager (beta) <fabric-manager>
-Device Allocation (beta) <dra>
-Multi-Node Scheduling (beta) <multi-node>
+multi-node
 ```
-
-- **Supported:** Node Feature Discovery, Driver Manager, Firmware, Telemetry.
-- **Beta:** Fabric Manager, Device Allocation (DRA), Multi-Node Scheduling.
