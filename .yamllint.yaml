@@ -1,12 +1,10 @@
 # yamllint config for tt-operator. Scope: hand-authored YAML (Chart.yaml,
 # values.yaml, workflow + composite-action definitions, dev manifests).
-# Helm templates are Go-templated text, not valid YAML, and the vendored
-# CRD bundle is machine-generated — both are excluded.
+# Helm templates are Go-templated text, not valid YAML, so they're excluded.
 extends: default
 
 ignore: |
   charts/tt-operator/templates/
-  charts/tt-operator/crds/
 
 rules:
   # Chart.yaml's description is one long intentional line.

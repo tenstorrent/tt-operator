@@ -62,17 +62,15 @@ helm install tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
 
 ## Upgrades
 
-Some subcharts (currently: jobset) ship their CRDs out-of-band from the
-Helm chart itself. The umbrella vendors those CRDs into
-`charts/tt-operator/crds/`. Helm applies that directory on `helm install`
-only — `helm upgrade` deliberately skips it (Helm 3 convention, to
-prevent the chart from silently widening or narrowing the CRD schema
-under live CRs). Re-apply CRDs by hand when upgrading to a chart version
-that bumps a subchart owning vendored CRDs:
+Helm applies subchart `crds/` directories on `helm install` only — `helm
+upgrade` deliberately skips them (Helm 3 convention, to prevent the
+chart from silently widening or narrowing the CRD schema under live
+CRs). When bumping a subchart whose `crds/` schema changed, re-apply
+its CRDs by hand before the upgrade:
 
 ```bash
 helm pull oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
-kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/crds/
+kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/charts/<subchart>/crds/
 helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> \
   -n tt-operator-system --reuse-values
 ```
@@ -84,16 +82,6 @@ validation schema exceeds the 262144-byte client-side
 re-applying over a CRD whose fields are already field-managed (e.g. by
 a prior Helm install). See
 [kubernetes-sigs/jobset README](https://github.com/kubernetes-sigs/jobset#installation).
-
-If you're working from a checkout, replace the `helm pull` step with
-`kubectl apply --server-side --force-conflicts -f charts/tt-operator/crds/`.
-
-To refresh the vendored CRDs after bumping a subchart version in
-`Chart.yaml`:
-
-```bash
-hack/refresh-vendored-crds.sh
-```
 
 ## Pinning subchart images
 
