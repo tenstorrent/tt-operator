@@ -34,6 +34,7 @@ Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling,
 | node-feature-discovery.enabled | bool | `true` | Install node-feature-discovery so Tenstorrent nodes get the feature.node.kubernetes.io/pci-1200_1e52.present label. |
 | node-feature-discovery.worker.config.core.featureSources | list | `["pci"]` | NFD feature sources to enable. Restricted to PCI — the only source needed to detect Tenstorrent devices. |
 | node-feature-discovery.worker.config.core.labelSources | list | `["pci"]` | NFD label sources to enable. Restricted to PCI to avoid the CPU/memory cost and label clutter of the full source set. |
+| node-feature-discovery.worker.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for the NFD worker DaemonSet. Defaults to universal so the PCI label reaches tainted node pools. |
 | tt-dra-driver.enabled | bool | `true` | Install tt-dra-driver (DRA kubelet plugin publishing devices as ResourceSlices). Requires k8s 1.33+, tt-fabric-manager.enabled, and the DynamicResourceAllocation feature gate. |
 | tt-dra-driver.kubeletPlugin.fabricManagerAgentAddress | string | `"tt-fabric-manager-agent.tt-operator-system.svc.cluster.local:50053"` | Address of the in-cluster TTFM agent Service the DRA plugin calls for GetTopology. |
 | tt-fabric-manager.enabled | bool | `true` | Install tt-fabric-manager (TTFM): inter-card/inter-host fabric topology + GetTopology gRPC. Opt-in; most single-node / non-Galaxy setups don't need it. |
