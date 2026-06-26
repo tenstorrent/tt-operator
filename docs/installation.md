@@ -32,7 +32,7 @@ No pod should be stuck in `ImagePullBackOff`. If one is, see
 ### Enable or disable components
 
 Every component is a subchart gated by `<name>.enabled`. Install only what you
-need by disabling the rest. For example, NFD and the driver manager only:
+need by disabling the rest. For example, NFD and the Driver Manager only:
 
 ```bash
 helm install tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
@@ -49,7 +49,7 @@ The component keys are `node-feature-discovery`, `tt-k8s-driver-manager`,
 
 ### Use pre-installed drivers
 
-If you manage `tt-kmd` yourself, outside Kubernetes, disable the driver manager.
+If you manage `tt-kmd` yourself, outside Kubernetes, disable the Driver Manager.
 The rest of the stack still runs and uses the already-loaded driver:
 
 ```bash
@@ -58,13 +58,13 @@ helm install tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
   --set tt-k8s-driver-manager.enabled=false
 ```
 
-No driver-manager controller or installer DaemonSet is created, and the driver
+No Driver Manager controller or installer DaemonSet is created, and the driver
 policy resources are not installed.
 
 ### Pin component images
 
 Image overrides use the standard repository and tag fields. There is no single
-combined image reference key. To pin a build of the driver manager:
+combined image reference key. To pin a build of the Driver Manager:
 
 ```bash
 helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \

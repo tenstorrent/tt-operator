@@ -1,11 +1,11 @@
-# Fabric manager
+# Fabric Manager
 
 **Status: Beta.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
 
 The Tenstorrent Fabric Manager (TTFM) resolves fabric topology across devices and
 hosts and serves it over a gRPC API that other components consume, notably the
-[DRA driver](dra.md), which uses it to place devices, and
+[DRA Driver](dra.md), which uses it to place devices, and
 [telemetry](telemetry.md), which uses it to label metrics with topology identity.
 
 ## What it deploys

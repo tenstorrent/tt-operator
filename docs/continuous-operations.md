@@ -1,4 +1,4 @@
-# Day-2 operations
+# Continuous Operations
 
 ## Upgrade tt-operator
 
@@ -39,7 +39,7 @@ operator cordons and drains the node, rebuilds and reloads `tt-kmd`, then
 uncordons it. Driver upgrades also pause telemetry first. The controller sets the
 `tenstorrent.com/deploy.tt-telemetry` node gate to drain the collector so it
 releases the device, then restores it once the new driver is ready. See the
-[Driver manager](components/driver-manager.md) component page.
+[Driver Manager](components/driver-manager.md) component page.
 
 ## Uninstall
 

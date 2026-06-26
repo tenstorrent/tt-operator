@@ -1,4 +1,4 @@
-# Multi-node scheduling (JobSet and PMIx)
+# Multi-Node Scheduling (JobSet and PMIx)
 
 **Status: Beta.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.

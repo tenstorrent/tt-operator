@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Start by capturing namespace state. See
-[Collect diagnostics](day-2-operations.md#collect-diagnostics), then match the
+[Collect diagnostics](continuous-operations.md#collect-diagnostics), then match the
 symptom below.
 
 ## helm install fails with a cert-manager error
@@ -71,7 +71,7 @@ kubectl -n tt-operator-system logs <driver-builder-pod>
 kubectl get resourceslices
 ```
 
-If there are no device entries, the [DRA driver](components/dra.md) has no
+If there are no device entries, the [DRA Driver](components/dra.md) has no
 resolvable fabric topology on the node, so it publishes nothing and the claim
 cannot bind. This is an environment limitation, not a fault, and this path is
 beta.

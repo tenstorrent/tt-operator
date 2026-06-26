@@ -7,7 +7,7 @@ firmware, export device telemetry, and make devices available to workloads.
 
 This documentation is written for cluster administrators and platform operators
 who install and run tt-operator. It is organized around the tasks you perform,
-from first install through day-2 operations.
+from first install through continuous operations.
 
 ```{toctree}
 :maxdepth: 1
@@ -26,7 +26,7 @@ installation
 
 configuration
 components/index
-day-2-operations
+continuous-operations
 troubleshooting
 ```
 
@@ -40,9 +40,9 @@ troubleshooting
 | Component | Capability | Status |
 |---|---|---|
 | Node Feature Discovery | Labels nodes that have Tenstorrent devices | Supported |
-| Driver manager | Installs, upgrades, and scopes `tt-kmd` via policy resources | Supported |
+| Driver Manager | Installs, upgrades, and scopes `tt-kmd` via policy resources | Supported |
 | Firmware | Flashes device firmware via a policy resource | Supported |
 | Telemetry | Exposes a Prometheus `/metrics` endpoint | Supported |
-| Fabric manager | Resolves fabric topology across devices and hosts | Beta |
-| Device allocation (DRA) | Publishes devices as schedulable resources | Beta |
-| Multi-node scheduling | JobSet and PMIx wiring for multi-node jobs | Beta |
+| Fabric Manager | Resolves fabric topology across devices and hosts | Beta |
+| Device Allocation (DRA) | Publishes devices as schedulable resources | Beta |
+| Multi-Node Scheduling | JobSet and PMIx wiring for multi-node jobs | Beta |

@@ -12,10 +12,10 @@ node-feature-discovery
 driver-manager
 firmware
 telemetry
-Fabric manager (beta) <fabric-manager>
-Device allocation (beta) <dra>
-Multi-node scheduling (beta) <multi-node>
+Fabric Manager (beta) <fabric-manager>
+Device Allocation (beta) <dra>
+Multi-Node Scheduling (beta) <multi-node>
 ```
 
-- **Supported:** Node Feature Discovery, Driver manager, Firmware, Telemetry.
-- **Beta:** Fabric manager, Device allocation (DRA), Multi-node scheduling.
+- **Supported:** Node Feature Discovery, Driver Manager, Firmware, Telemetry.
+- **Beta:** Fabric Manager, Device Allocation (DRA), Multi-Node Scheduling.

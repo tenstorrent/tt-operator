@@ -41,7 +41,7 @@ healthy again once the driver is back. This is expected and not an error.
 
 ## Topology identity
 
-The collector can resolve richer topology from the [fabric manager](fabric-manager.md)
+The collector can resolve richer topology from the [Fabric Manager](fabric-manager.md)
 via `tt-telemetry.config.fabric_manager_address`. Where no topology is staged,
 the collector falls back to monitoring all device channels. Metrics remain
 available either way.

@@ -19,7 +19,7 @@ umbrella Helm chart, validated end to end on real Tenstorrent hardware.
 - **Firmware flashing** via the `TenstorrentFirmwarePolicy` resource.
 - **Telemetry.** A Prometheus `/metrics` endpoint reporting per-device health,
   with topology-aware identity labels.
-- **Day-2 operations.** In-place `helm upgrade` and clean `helm uninstall`.
+- **Continuous operations.** In-place `helm upgrade` and clean `helm uninstall`.
 
 ### Supported features
 
@@ -36,10 +36,10 @@ The following components are installed by default and available for evaluation.
 Their core behavior works today. Some capabilities are still maturing and may
 change.
 
-- **Fabric manager.** Topology resolution across devices and hosts.
-- **Device allocation (DRA).** Publishing devices as schedulable resources via
+- **Fabric Manager.** Topology resolution across devices and hosts.
+- **Device Allocation (DRA).** Publishing devices as schedulable resources via
   Kubernetes Dynamic Resource Allocation.
-- **Multi-node scheduling.** JobSet plus PMIx environment injection for
+- **Multi-Node Scheduling.** JobSet plus PMIx environment injection for
   multi-node jobs.
 
 ### Requirements
@@ -55,7 +55,7 @@ environments.
 
 ### Known limitations
 
-- Device allocation (DRA) requires resolvable fabric topology on the node. On
+- Device Allocation (DRA) requires resolvable fabric topology on the node. On
   systems without staged topology, devices are not yet published as schedulable
   resources.
 - Air-gapped and private-registry installs are not yet covered by a documented

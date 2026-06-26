@@ -29,11 +29,11 @@ If you do not need `kubepmix`, you can skip cert-manager by disabling it:
 
 The component images are hosted on GitHub Container Registry (`ghcr.io`). Nodes
 must be able to pull from it, directly or through your mirror or pull secret.
-Pods stuck in `ImagePullBackOff` almost always indicate a registry-access gap.
+Pods stuck in `ImagePullBackOff` indicate a registry-access gap.
 See [Troubleshooting](troubleshooting.md).
 
 ## Host requirements for the driver
 
-The driver manager builds `tt-kmd` against the running kernel on each target
+The Driver Manager builds `tt-kmd` against the running kernel on each target
 node, so nodes must have the matching kernel headers available. See the
-[Driver manager](components/driver-manager.md) component page.
+[Driver Manager](components/driver-manager.md) component page.

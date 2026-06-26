@@ -1,9 +1,9 @@
-# Device allocation (DRA)
+# Device Allocation (DRA)
 
 **Status: Beta.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
 
-The DRA driver exposes Tenstorrent devices to workloads using Kubernetes
+The DRA Driver exposes Tenstorrent devices to workloads using Kubernetes
 [Dynamic Resource Allocation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/).
 A per-node kubelet plugin discovers devices and publishes them as `ResourceSlice`
 objects under the `tenstorrent.com` device class. A pod then requests a device
@@ -13,7 +13,7 @@ with a `ResourceClaim`.
 
 - Kubernetes 1.33 or later with Dynamic Resource Allocation available on the API
   server and kubelet.
-- The [fabric manager](fabric-manager.md) reachable, since the plugin resolves
+- The [Fabric Manager](fabric-manager.md) reachable, since the plugin resolves
   devices from topology before publishing them.
 
 ## Claim a device

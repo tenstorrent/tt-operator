@@ -1,10 +1,10 @@
-# Device labeling (Node Feature Discovery)
+# Device Labeling (Node Feature Discovery)
 
 **Status: Supported**
 
 tt-operator deploys [Node Feature Discovery](https://kubernetes-sigs.github.io/node-feature-discovery/)
 (NFD) to detect Tenstorrent hardware and label the nodes that have it. Those
-labels are what make the driver manager, telemetry, and your own workloads
+labels are what make the Driver Manager, telemetry, and your own workloads
 schedule only where a device is present.
 
 ## What it does

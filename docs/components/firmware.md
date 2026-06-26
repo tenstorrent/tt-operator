@@ -2,7 +2,7 @@
 
 **Status: Supported**
 
-The driver manager also flashes device firmware, driven by a
+The Driver Manager also flashes device firmware, driven by a
 `TenstorrentFirmwarePolicy` custom resource. Applying a policy makes the operator
 run a per-node flash Job that writes the requested firmware bundle to each
 matching device.

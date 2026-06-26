@@ -1,14 +1,14 @@
-# Driver manager
+# Driver Manager
 
 **Status: Supported**
 
-The driver manager installs, upgrades, and node-scopes the Tenstorrent kernel
+The Driver Manager installs, upgrades, and node-scopes the Tenstorrent kernel
 driver (`tt-kmd`) through a declarative custom resource. You describe the driver
 version you want, and the operator builds and loads it on the matching nodes.
 
 ## How it works
 
-Installing tt-operator deploys the driver-manager controller and installs the
+Installing tt-operator deploys the Driver Manager controller and installs the
 `TenstorrentDriverPolicy` custom resource definition. When you apply a policy,
 the controller creates a per-policy DaemonSet on the matching nodes that builds
 `tt-kmd` against the node's running kernel, loads it, and surfaces the device
@@ -52,7 +52,7 @@ new version, then uncordons it. The host module version
 is live. Exactly one `tenstorrent` module remains loaded.
 
 Driver upgrades also pause telemetry first so the collector releases the device.
-See [Day-2 operations](../day-2-operations.md) and [Telemetry](telemetry.md).
+See [Continuous Operations](../continuous-operations.md) and [Telemetry](telemetry.md).
 
 ## Scope to specific nodes
 
