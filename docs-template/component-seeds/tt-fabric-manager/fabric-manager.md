@@ -1,7 +1,9 @@
 # Fabric Manager
 
-**Status: Beta.** Installed by default and usable for evaluation. Some
+```{attention}
+**Beta feature.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
+```
 
 The Tenstorrent Fabric Manager (TTFM) resolves fabric topology across devices and
 hosts and serves it over a gRPC API that other components consume, notably the

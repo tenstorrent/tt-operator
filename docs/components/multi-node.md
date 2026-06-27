@@ -1,7 +1,9 @@
 # Multi-Node Scheduling (JobSet and PMIx)
 
-**Status: Beta.** Installed by default and usable for evaluation. Some
+```{attention}
+**Beta feature.** Installed by default and usable for evaluation. Some
 capabilities are still maturing and may change.
+```
 
 Two components support multi-node jobs on Tenstorrent hardware:
 
