@@ -91,4 +91,3 @@ html_context = {
 def setup(app):
     app.add_css_file("tt_theme.css")
     app.connect("config-inited", _sync_chart_values)
-
