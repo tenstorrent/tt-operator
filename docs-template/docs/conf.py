@@ -81,6 +81,7 @@ _versions = [v.strip() for v in os.environ.get("TT_DOCS_VERSIONS", "").splitline
 html_baseurl = f"https://docs.tenstorrent.com/{project_code}/{_current_version}/"
 html_context = {
     "project_code": project_code,
+    "cns_component": project_code,
     "versions": _versions or [_current_version],
     "current_version": _current_version,
     "logo_link_url": os.environ.get("homepage", "https://docs.tenstorrent.com/"),
@@ -91,6 +92,3 @@ def setup(app):
     app.add_css_file("tt_theme.css")
     app.connect("config-inited", _sync_chart_values)
 
-# Root document is the shared Cloud-Native Support nav wrapper (renders the
-# unified sidebar). The component hub stays in index.md.
-root_doc = "_nav"

@@ -1,41 +1,90 @@
 {%- extends "!layout.html" %}
 
+{#- Top-left logo links to docs.tenstorrent.com; the project title links to this
+    site's own home (its index), so each component site stays coherent. #}
 {%- block sidebartitle %}
-
-{# the logo helper function was removed in Sphinx 6 and deprecated since Sphinx 4 #}
-{# the master_doc variable was renamed to root_doc in Sphinx 4 (master_doc still exists in later Sphinx versions) #}
 {%- set _logo_url = logo_url|default(pathto('_static/' + (logo or ""), 1)) %}
 {%- set _root_doc = root_doc|default(master_doc) %}
-
 {%- if logo or logo_url %}
 <a href="{{ logo_link_url }}">
     <img src="{{ _logo_url }}" class="logo" alt="{{ _('Logo') }}"/>
 </a>
 {%- endif %}
-
 <a href="{{ pathto(_root_doc) }}">
     {{ project }}
 </a>
-
-{%- if theme_display_version %}
-  {%- set nav_version = version %}
-  {%- if READTHEDOCS and current_version %}
-    {%- set nav_version = current_version %}
-  {%- endif %}
-  {%- if nav_version %}
-    <div class="version">
-      {{ nav_version }}
-    </div>
-  {%- endif %}
-{%- endif %}
-
 {%- include "searchbox.html" %}
+{%- endblock %}
 
+{#- Shared Cloud-Native Support sidebar. The component list is the single shared
+    manifest, owned by tenstorrent.github.io and vendored with this theme. It
+    renders only when a site opts in via html_context["cns_component"], so the
+    docs.tenstorrent.com umbrella and unrelated projects using this theme are
+    unaffected.
+
+    Some entries are pages that physically live inside another component's repo
+    (Node Feature Discovery and Multi-Node Scheduling live in tt-operator;
+    Firmware lives in tt-k8s-driver-manager). Each such entry carries a "page"
+    docname. The switcher is page-aware: when the current page is one of those
+    sub-pages, that entry is highlighted and its host component collapses to a
+    plain link, so a sub-page reads as its own component rather than opening the
+    host's full navigation. Otherwise the host (primary) entry is active and its
+    own page navigation (with its section captions) nests beneath it. #}
+{%- block menu %}
+{%- if cns_component is defined and cns_component %}
+{%- set cns_items = [
+  {"label": "TT-Operator",                  "code": "tt-operator",           "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-operator/"},
+  {"label": "Node Feature Discovery",       "code": "tt-operator",           "primary": false, "page": "components/node-feature-discovery", "url": "https://docs.tenstorrent.com/tt-operator/components/node-feature-discovery.html"},
+  {"label": "Driver Manager",               "code": "tt-k8s-driver-manager", "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/"},
+  {"label": "Firmware",                     "code": "tt-k8s-driver-manager", "primary": false, "page": "firmware",                           "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/firmware.html"},
+  {"label": "Telemetry",                    "code": "tt-telemetry",          "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-telemetry/"},
+  {"label": "Fabric Manager (beta)",        "code": "tt-fabric-manager",     "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-fabric-manager/"},
+  {"label": "Device Allocation (beta)",     "code": "tt-dra-driver",         "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-dra-driver/"},
+  {"label": "Multi-Node Scheduling (beta)", "code": "tt-operator",           "primary": false, "page": "components/multi-node",             "url": "https://docs.tenstorrent.com/tt-operator/components/multi-node.html"},
+] %}
+{#- Is the current page one of this site's promoted sub-pages? #}
+{%- set ns = namespace(subpage_active=false) %}
+{%- for c in cns_items %}
+{%- if c.code == cns_component and not c.primary and c.page == pagename %}{% set ns.subpage_active = true %}{% endif %}
+{%- endfor %}
+{%- set component_nav = toctree(maxdepth=4, collapse=True, includehidden=True, titles_only=True)
+      | replace('toctree-l4', 'toctree-l5')
+      | replace('toctree-l3', 'toctree-l4')
+      | replace('toctree-l2', 'toctree-l3')
+      | replace('toctree-l1', 'toctree-l2') %}
+<p class="caption" role="heading"><span class="caption-text">Cloud-Native Support</span></p>
+<ul>
+{%- for c in cns_items %}
+{%- set primary_current = (c.code == cns_component and c.primary and not ns.subpage_active) %}
+{%- set subpage_current = (c.code == cns_component and not c.primary and c.page == pagename) %}
+{%- if primary_current %}
+  <li class="toctree-l1 current cns-current"><a class="reference internal current" href="{{ c.url }}">{{ c.label }}</a>
+  {{ component_nav }}
+  </li>
+{%- else %}
+  <li class="toctree-l1{% if subpage_current %} current{% endif %}"><a class="reference internal{% if subpage_current %} current{% endif %}" href="{{ c.url }}">{{ c.label }}</a></li>
+{%- endif %}
+{%- endfor %}
+</ul>
+{%- else %}
+{{ super() }}
+{%- endif %}
+{%- endblock %}
+
+{%- block extrahead %}
+  {{ super() }}
+{%- if cns_component is defined and cns_component %}
+  {#- Scoped styling for the current component's nested section captions, so they
+      read as sub-headings under the component rather than top-level captions.
+      Limited to .cns-current, so the shared platform CSS is untouched. #}
+  <style>
+    .wy-menu-vertical li.cns-current > p.caption { padding-left: 2.427em; margin-top: .6em; font-size: .8em; opacity: .8; }
+  </style>
+{%- endif %}
 {%- endblock %}
 
 {%- block content %}
   {{ super() }}
-  {# Default ON. Disable when head contains meta name="hide_feedback". #}
   {%- if metatags is not defined or ('name="hide_feedback"' not in metatags) -%}
     {%- include "feedback_widget.html" %}
   {%- endif -%}

@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Device Labeling (Node Feature Discovery)
 
 **Status: Supported**

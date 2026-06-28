@@ -35,6 +35,12 @@ docs/
    `{toctree}` as it grows.
 4. Enable GitHub Pages with the **GitHub Actions** source (Settings -> Pages).
 
+The shared theme renders the unified **Cloud-Native Support** sidebar (the
+component switcher) automatically because `docs/conf.py` sets
+`html_context["cns_component"]`. Your component must also appear in the shared
+manifest in `tenstorrent.github.io` (`shared/_templates/layout.html`) to show up
+in the switcher; that manifest is the single source of truth for the list.
+
 ## Preview locally
 
 ```bash
