@@ -27,7 +27,10 @@ concurrency:
 
 jobs:
   build:
-    # Build gate on every PR/push: warnings are errors, plus a link check.
+    # Build gate on every PR/push. Fails on Sphinx errors; warnings are surfaced
+    # in the log but do not fail the build, so existing owner-authored Markdown
+    # publishes without being rewritten for Sphinx. Tighten with
+    # `SPHINXOPTS=-W` once your docs are warning-clean if you want.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +39,8 @@ jobs:
           python-version: "3.12"
       - name: Install docs dependencies
         run: pip install -r docs/requirements.txt
-      - name: Build (warnings are errors)
-        run: sphinx-build -W --keep-going -b html docs docs/_build/html
+      - name: Build
+        run: sphinx-build -b html docs docs/_build/html
       - name: Link check
         run: sphinx-build -b linkcheck docs docs/_build/linkcheck
         continue-on-error: true

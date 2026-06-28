@@ -1,6 +1,7 @@
-# Minimal Sphinx Makefile for the tt-operator documentation.
-# `make html` mirrors CI (warnings are errors). `make serve` previews locally.
-SPHINXOPTS  ?= -W --keep-going
+# Minimal Sphinx Makefile for the component documentation.
+# `make html` builds; `make serve` previews locally. Warnings are surfaced but
+# do not fail the build. Pass `SPHINXOPTS="-W --keep-going"` for a strict build.
+SPHINXOPTS  ?=
 SPHINXBUILD ?= sphinx-build
 SOURCEDIR   = .
 BUILDDIR    = _build
