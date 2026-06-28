@@ -90,3 +90,7 @@ html_context = {
 def setup(app):
     app.add_css_file("tt_theme.css")
     app.connect("config-inited", _sync_chart_values)
+
+# Root document is the shared Cloud-Native Support nav wrapper (renders the
+# unified sidebar). The component hub stays in index.md.
+root_doc = "_nav"

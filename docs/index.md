@@ -25,7 +25,6 @@ installation
 :caption: Configure and operate
 
 configuration
-components/index
 continuous-operations
 troubleshooting
 ```
