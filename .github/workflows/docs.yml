@@ -1,8 +1,10 @@
 name: docs
 
 # Build the Sphinx/MyST documentation as a gate on every change, and deploy the
-# versioned site to GitHub Pages on main + release tags. The published site is
-# what docs.tenstorrent.com/tt-operator points at.
+# versioned site to GitHub Pages on release tags only. The published site is
+# what docs.tenstorrent.com/tt-operator points at. Pushing to main runs the
+# build gate but never publishes; publishing happens only when a v*.*.* tag is
+# cut.
 #
 # One-time setup: enable GitHub Pages for this repo with "GitHub Actions" as the
 # source (Settings -> Pages) so the deploy job can publish.
@@ -43,8 +45,8 @@ jobs:
         continue-on-error: true
 
   deploy:
-    # Versioned GitHub Pages deploy, only on main + release tags.
-    if: github.event_name == 'push'
+    # Versioned GitHub Pages deploy, only on release tags (never on push to main).
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     permissions:
