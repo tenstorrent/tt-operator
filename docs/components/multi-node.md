@@ -1,7 +1,3 @@
----
-orphan: true
----
-
 # Multi-Node Scheduling (JobSet and PMIx)
 
 ```{attention}

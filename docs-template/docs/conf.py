@@ -26,7 +26,7 @@ copyright = "2026, Tenstorrent AI ULC"
 _docs_dir = Path(__file__).resolve().parent
 _repo_root = _docs_dir.parent
 
-extensions = ["myst_parser", "sphinxcontrib.mermaid", "sphinx_copybutton"]
+extensions = ["myst_parser", "sphinxcontrib.mermaid", "sphinx_copybutton", "sphinx_togglebutton"]
 myst_enable_extensions = ["colon_fence", "deflist"]
 myst_heading_anchors = 3
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
@@ -57,6 +57,12 @@ def _sync_chart_values(app, config):
 # otherwise the locally-vendored Tenstorrent theme. This is what lets the styling
 # follow docs.tenstorrent.com when it changes.
 html_theme = "sphinx_rtd_theme"
+# Match the docs.tenstorrent.com shared theme's sidebar behavior.
+html_theme_options = {
+    "collapse_navigation": False,
+    "titles_only": True,
+    "navigation_depth": 2,
+}
 _shared_dir = _repo_root.parent.parent / "shared"
 if _shared_dir.is_dir():
     html_static_path = [str(_shared_dir / "_static"), str(_docs_dir / "_static")]
@@ -81,10 +87,11 @@ _versions = [v.strip() for v in os.environ.get("TT_DOCS_VERSIONS", "").splitline
 html_baseurl = f"https://docs.tenstorrent.com/{project_code}/{_current_version}/"
 html_context = {
     "project_code": project_code,
-    "cns_component": project_code,
     "versions": _versions or [_current_version],
     "current_version": _current_version,
     "logo_link_url": os.environ.get("homepage", "https://docs.tenstorrent.com/"),
+    # Base URL the shared theme's search modal uses to resolve hit URLs.
+    "search_site_base_url": "https://docs.tenstorrent.com/",
 }
 
 
