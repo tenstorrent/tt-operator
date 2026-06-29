@@ -36,6 +36,14 @@ node-feature-discovery:
         featureSources: ["pci"]
         # -- (list) NFD label sources to enable. Restricted to PCI to avoid the CPU/memory cost and label clutter of the full source set.
         labelSources: ["pci"]
+    # NFD worker must reach every node — including ones tainted for team
+    # / tenant isolation — or the `pci-1200_1e52.present` label never
+    # lands and the firmware / driver policy controllers never match.
+    # Matches the universal-toleration pattern used by NVIDIA gpu-operator,
+    # Calico, node-exporter, etc. for system DaemonSets.
+    # -- (list) Tolerations for the NFD worker DaemonSet. Defaults to universal so the PCI label reaches tainted node pools.
+    tolerations:
+      - operator: Exists
 
 # tt-k8s-driver-manager owns the controllers, CRDs, and per-node images that
 # manage tt-kmd installation, firmware flashing, and tt-smi userspace.
