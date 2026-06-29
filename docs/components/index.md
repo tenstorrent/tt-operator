@@ -1,17 +1,17 @@
 # Components
 
-tt-operator brings together the components below. Each is documented by its
-owners on its own page in the Cloud-Native Support documentation.
+tt-operator brings together the components below. Each is documented on its own
+page; follow a component to get started.
 
-| Component | Status | Documentation |
-|---|---|---|
-| Node Feature Discovery | Supported | [this site](node-feature-discovery.md) |
-| Driver Manager | Supported | [tt-k8s-driver-manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) |
-| Firmware | Supported | [tt-k8s-driver-manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) |
-| Telemetry | Supported | [tt-telemetry](https://docs.tenstorrent.com/tt-telemetry/) |
-| Fabric Manager | Beta | [tt-fabric-manager](https://docs.tenstorrent.com/tt-fabric-manager/) |
-| Device Allocation | Beta | [tt-dra-driver](https://docs.tenstorrent.com/tt-dra-driver/) |
-| Multi-Node Scheduling | Beta | [this site](multi-node.md) |
+| Component | Status |
+|---|---|
+| [Node Feature Discovery](node-feature-discovery.md) | Supported |
+| [Driver Manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) | Supported |
+| [Firmware](https://docs.tenstorrent.com/tt-k8s-driver-manager/firmware.html) | Supported |
+| [Telemetry](https://docs.tenstorrent.com/tt-telemetry/) | Supported |
+| [Fabric Manager](https://docs.tenstorrent.com/tt-fabric-manager/) | Beta |
+| [Device Allocation](https://docs.tenstorrent.com/tt-dra-driver/) | Beta |
+| [Multi-Node Scheduling](multi-node.md) | Beta |
 
 ```{toctree}
 :hidden:

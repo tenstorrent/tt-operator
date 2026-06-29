@@ -1,5 +1,11 @@
 {%- extends "!layout.html" %}
 
+{#── These docs omit the search bundle that drives the sidebar caret, so hide
+    the upstream chevron that would otherwise render but never expand. ─#}
+{%- block extrahead %}{{ super() }}
+  <style>.wy-menu-vertical li:has(> ul) > a::after { content: none; }</style>
+{%- endblock %}
+
 {#── Top navbar injected before the RTD grid ─────────────────────#}
 {%- block extrabody %}
 {%- set _logo_url = logo_url|default(pathto('_static/' + (logo or ""), 1)) %}
