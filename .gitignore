@@ -3,3 +3,8 @@ charts/**/charts/*.tgz
 
 # Local Claude Code permission allow-list — user-specific tooling state
 .claude/
+
+# tt-operator docs (Sphinx) build artifacts
+docs/_build/
+docs/_generated/
+docs/output/

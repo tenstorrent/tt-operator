@@ -1,0 +1,7 @@
+# Documentation build dependencies (Sphinx + MyST).
+sphinx>=7,<9
+myst-parser>=2
+sphinx-rtd-theme>=2
+sphinxcontrib-mermaid>=0.9
+sphinx-copybutton>=0.5
+sphinx-togglebutton>=0.3
