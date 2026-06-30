@@ -129,8 +129,10 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: materializes the ConfigMap from the umbrella's config block
+  - it: materializes the ConfigMap when config is set
     template: charts/tt-telemetry/templates/configmap.yaml
+    set:
+      tt-telemetry.config.fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
     asserts:
       - hasDocuments:
           count: 1
