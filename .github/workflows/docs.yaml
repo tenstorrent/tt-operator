@@ -10,6 +10,7 @@ name: docs
 # source (Settings -> Pages) so the deploy job can publish.
 
 on:
+  workflow_dispatch:        # manual deploy (e.g. against a release tag)
   push:
     branches: [main]
     tags: ["v*.*.*"]
