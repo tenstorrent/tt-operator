@@ -1,9 +1,27 @@
 {%- extends "!layout.html" %}
 
-{#── These docs omit the search bundle that drives the sidebar caret, so hide
-    the upstream chevron that would otherwise render but never expand. ─#}
+{#── Cloud-Native Support sidebar: scoped styling for the nested current-
+    component captions, so they read as sub-headings under the component
+    (see the menu block below). Guarded so non-CNS builds are untouched. ─#}
 {%- block extrahead %}{{ super() }}
-  <style>.wy-menu-vertical li:has(> ul) > a::after { content: none; }</style>
+{%- if cns_component is defined and cns_component %}
+  <style>
+  /* Nested section captions read as sub-headings, out-dented ~8px left of items. */
+  .wy-menu-vertical li.cns-current > p.caption { padding-left: 15px; margin-top: .6em; font-size: .8em; opacity: .8; }
+  /* Same-origin cross-links open in the same tab (see sidebar-carets.js); drop the new-tab icon. */
+  .wy-menu-vertical a.reference.external.tt-same-origin::after { content: none; }
+  /* Caret: tight, centered box (no asymmetric padding) so the rotated "down" state stays vertically centered. */
+  .wy-menu-vertical li:has(> ul) > a::after { padding-left: 0; width: 1em; text-align: center; }
+  /* Highlight only the current page, not every descendant of an expanded section,
+     so the row spacing reads consistently across all levels. */
+  .wy-menu-vertical li.toctree-l2.current li.toctree-l3:not(.current) > a,
+  .wy-menu-vertical li.toctree-l3.current li.toctree-l4:not(.current) > a,
+  .wy-menu-vertical li.toctree-l4.current li.toctree-l5:not(.current) > a { background-color: transparent !important; }
+  /* Flex `gap` only applies between siblings, not before the first child, so a
+     parent's first nested item sits flush against it — add the same 4px gap. */
+  .wy-menu-vertical a + ul { margin-top: 4px; }
+  </style>
+{%- endif %}
 {%- endblock %}
 
 {#── Top navbar injected before the RTD grid ─────────────────────#}
@@ -32,10 +50,10 @@
         <a href="{{ _home }}#software">Software</a>
         <div class="tt-nav-dropdown">
           <a href="{{ _home }}forge/index.html">TT-Forge</a>
-          <a href="https://firdovsimammedovk.github.io/tt-metal-sandbox/ttnn/" target="_blank" rel="noopener">TT-NN</a>
-          <a href="https://firdovsimammedovk.github.io/tt-lang-sandbox/" target="_blank" rel="noopener">TT-Lang</a>
-          <a href="https://firdovsimammedovk.github.io/tt-mlir-sandbox/" target="_blank" rel="noopener">TT-MLIR</a>
-          <a href="https://firdovsimammedovk.github.io/tt-metal-sandbox/tt-metalium/" target="_blank" rel="noopener">TT-Metalium</a>
+          <a href="https://docs.tenstorrent.com/tt-metal/latest/ttnn/" target="_blank" rel="noopener">TT-NN</a>
+          <a href="https://docs.tenstorrent.com/tt-lang/" target="_blank" rel="noopener">TT-Lang</a>
+          <a href="https://docs.tenstorrent.com/tt-mlir/" target="_blank" rel="noopener">TT-MLIR</a>
+          <a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/" target="_blank" rel="noopener">TT-Metalium</a>
           <a href="https://docs.tenstorrent.com/cloud-native-support/" target="_blank" rel="noopener">Cloud-Native Support</a>
         </div>
       </li>
@@ -59,10 +77,10 @@
           <a href="https://github.com/tenstorrent/tt-studio" target="_blank" rel="noopener">TT-Studio</a>
           <a href="https://github.com/tenstorrent/tt-smi" target="_blank" rel="noopener">TT-SMI</a>
           <a href="https://docs.tenstorrent.com/tt-toplike/" target="_blank" rel="noopener">TT-Toplike</a>
-          <a href="https://firdovsimammedovk.github.io/tt-visualizer-sandbox/" target="_blank" rel="noopener">TT-NN Visualizer</a>
+          <a href="https://docs.tenstorrent.com/ttnn-visualizer/" target="_blank" rel="noopener">TT-NN Visualizer</a>
           <a href="https://github.com/tenstorrent/tt-topology" target="_blank" rel="noopener">TT-Topology</a>
           <a href="https://docs.tenstorrent.com/tt-vscode-toolkit" target="_blank" rel="noopener">TT-VSCode-Toolkit</a>
-          <a href="https://firdovsimammedovk.github.io/tt-blacksmith-sandbox/" target="_blank" rel="noopener">TT-Blacksmith</a>
+          <a href="https://docs.tenstorrent.com/tt-blacksmith/" target="_blank" rel="noopener">TT-Blacksmith</a>
         </div>
       </li>
       <li class="has-dropdown">
@@ -112,11 +130,65 @@
 {#── Suppress RTD built-in version flyout (we have our own switcher) ─#}
 {%- block versions %}{% endblock %}
 
-{#── Footer: sidebar-scroll + external-nav + right-TOC scripts ────#}
+{#── Left sidebar: shared Cloud-Native Support switcher ───────────
+    The 8-component list is the shared manifest. It renders only when a site
+    opts in via html_context["cns_component"], so non-CNS projects fall through
+    to the default menu. Links are `reference internal` -> same tab, no external
+    icon. The current site's own page tree nests one level under its entry (the
+    toctree level-shift), expandable via the .tt-open caret. Page-aware: Node
+    Feature Discovery + Multi-Node live in tt-operator and Firmware in
+    tt-k8s-driver-manager, so on those sub-pages the entry highlights and its
+    host collapses to a plain link. ─#}
+{%- block menu %}
+{%- if cns_component is defined and cns_component %}
+{%- set cns_items = [
+  {"label": "TT-Operator",                  "code": "tt-operator",           "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-operator/"},
+  {"label": "Node Feature Discovery",       "code": "tt-operator",           "primary": false, "page": "components/node-feature-discovery", "url": "https://docs.tenstorrent.com/tt-operator/components/node-feature-discovery.html"},
+  {"label": "Driver Manager",               "code": "tt-k8s-driver-manager", "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/"},
+  {"label": "Firmware",                     "code": "tt-k8s-driver-manager", "primary": false, "page": "firmware",                           "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/firmware.html"},
+  {"label": "Telemetry",                    "code": "tt-telemetry",          "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-telemetry/"},
+  {"label": "Fabric Manager (beta)",        "code": "tt-fabric-manager",     "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-fabric-manager/"},
+  {"label": "Device Allocation (beta)",     "code": "tt-dra-driver",         "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-dra-driver/"},
+  {"label": "Multi-Node Scheduling (beta)", "code": "tt-operator",           "primary": false, "page": "components/multi-node",             "url": "https://docs.tenstorrent.com/tt-operator/components/multi-node.html"},
+] %}
+{%- set ns = namespace(subpage_active=false) %}
+{%- for c in cns_items %}
+{%- if c.code == cns_component and not c.primary and c.page == pagename %}{% set ns.subpage_active = true %}{% endif %}
+{%- endfor %}
+{#- Telemetry's Metrics page has 81 child pages; cap its depth so the sidebar
+    shows Metrics + Configuration without exploding the metric list (the full
+    list stays reachable from the Metrics page body). -#}
+{%- set _navdepth = 1 if cns_component == 'tt-telemetry' else 4 %}
+{%- set component_nav = toctree(maxdepth=_navdepth, collapse=True, includehidden=True, titles_only=True)
+      | replace('toctree-l4', 'toctree-l5')
+      | replace('toctree-l3', 'toctree-l4')
+      | replace('toctree-l2', 'toctree-l3')
+      | replace('toctree-l1', 'toctree-l2') %}
+<p class="caption" role="heading"><span class="caption-text">Cloud-Native Support</span></p>
+<ul>
+{%- for c in cns_items %}
+{%- set primary_current = (c.code == cns_component and c.primary and not ns.subpage_active) %}
+{%- set subpage_current = (c.code == cns_component and not c.primary and c.page == pagename) %}
+{%- if primary_current %}
+  <li class="toctree-l1 current cns-current"><a class="reference internal current" href="{{ c.url }}">{{ c.label }}</a>
+  {{ component_nav }}
+  </li>
+{%- else %}
+  <li class="toctree-l1{% if subpage_current %} current{% endif %}"><a class="reference internal{% if subpage_current %} current{% endif %}" href="{{ c.url }}">{{ c.label }}</a></li>
+{%- endif %}
+{%- endfor %}
+</ul>
+{%- else %}
+{{ super() }}
+{%- endif %}
+{%- endblock %}
+
+{#── Footer: sidebar-scroll + external-nav + caret + right-TOC scripts ─#}
 {%- block footer %}
 {#- Loaded after RTD's Navigation.enable()/reset() so it can keep the left
     sidebar from jumping to the top on every page navigation. -#}
 <script src="{{ pathto('_static/sidebar-scroll.js', 1) }}"></script>
 <script src="{{ pathto('_static/external-nav-links.js', 1) }}"></script>
+<script src="{{ pathto('_static/sidebar-carets.js', 1) }}"></script>
 <script src="{{ pathto('_static/docs-toc.js', 1) }}"></script>
 {%- endblock %}
