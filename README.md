@@ -85,16 +85,34 @@ a prior Helm install). See
 
 ## Pinning subchart images
 
-The umbrella forwards image overrides to `tt-k8s-driver-manager` via the
-`tt-k8s-driver-manager.*` block in `values.yaml`. To pin a feature-branch
-build of the driver manager:
+The umbrella forwards image overrides to each subchart via its values block.
+Images use the standard `{ repository, tag }` split — there is no single
+`image=<ref>` string key. To pin a feature-branch build of the driver manager:
 
 ```bash
 helm upgrade tt-operator charts/tt-operator \
-  --set tt-k8s-driver-manager.controller.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-controller:<tag> \
-  --set tt-k8s-driver-manager.driver.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-builder:<tag> \
-  --set tt-k8s-driver-manager.flasher.image=ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher:<tag>
+  --set tt-k8s-driver-manager.controller.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager-controller \
+  --set tt-k8s-driver-manager.controller.image.tag=<tag> \
+  --set tt-k8s-driver-manager.driver.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager-builder \
+  --set tt-k8s-driver-manager.driver.image.tag=<tag> \
+  --set tt-k8s-driver-manager.flasher.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager-flasher \
+  --set tt-k8s-driver-manager.flasher.image.tag=<tag>
 ```
+
+`controller.image.*` sets the controller Deployment image directly; the
+`driver.*` and `flasher.*` images are passed to the controller as the
+`DRIVER_IMAGE` / `FLASHER_IMAGE` env vars (the per-node builder/flasher pods it
+spawns), not as separate workloads. Other subcharts follow the same pattern,
+e.g. tt-telemetry:
+
+```bash
+helm upgrade tt-operator charts/tt-operator \
+  --set tt-telemetry.image.repository=ghcr.io/tenstorrent/tt-telemetry \
+  --set tt-telemetry.image.tag=<tag>
+```
+
+CI (`static-checks` → `image-pin-forwarding`) renders the chart with these
+overrides and asserts they reach the rendered pod specs, so this stays honest.
 
 ## Dev cluster (kind)
 

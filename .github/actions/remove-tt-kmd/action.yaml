@@ -23,7 +23,8 @@ runs:
         sudo find "/lib/modules/$(uname -r)" -name 'tenstorrent.ko*' -delete
         sudo depmod -a
         ! [ -e /sys/module/tenstorrent/version ]
-        ! ls /dev/tenstorrent/0 2>/dev/null
+        # No char device nodes may remain (multi-device hosts expose 0..N).
+        ! find /dev/tenstorrent -maxdepth 1 -type c 2>/dev/null | grep -q .
         ! [ -d /var/lib/dkms/tenstorrent ]
         ! compgen -G "/usr/src/tenstorrent-*" >/dev/null
         ! sudo modprobe tenstorrent 2>/dev/null

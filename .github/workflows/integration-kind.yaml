@@ -1,13 +1,22 @@
 name: integration-kind
 
-# Live-install integration tests for the tt-k8s-driver-manager subchart as the
-# umbrella deploys it. Tier 1 (this job): kind, every PR — install the umbrella
-# with only the driver manager enabled and assert its install-time and
-# runtime-created resources behave on a real cluster, without Tenstorrent
-# hardware. Tier 2 (self-hosted hardware) is covered by integration-rke2.yaml.
-#
-# Beyond a bare install smoke-test: also asserts CRDs, RBAC, the controller
-# Deployment, and the per-CR installer DaemonSet (built on kind-bootstrap).
+# Tier-1 (kind, every PR — no Tenstorrent hardware) live-install integration
+# tests for the umbrella. Tier 2 (self-hosted hardware) is integration-rke2.yaml.
+# Jobs:
+#   - driver-manager-kind: install the umbrella with only the driver manager
+#     enabled and assert its install-time + runtime-created resources (CRDs,
+#     RBAC, controller Deployment, per-CR installer DaemonSet) plus day-2
+#     reconcile/upgrade/uninstall (built on kind-bootstrap).
+#   - subset-install: install each value permutation on a live cluster and
+#     assert only the selected operands are created (US-A2; the structural half
+#     of US-A4).
+#   - cert-manager-prereq: prove the kubepmix cert-manager prerequisite, both
+#     directions (US-A7).
+#   - oci-install: install from the OCI-published chart with no checkout
+#     (US-A3, stretch).
+# The subset/prereq/OCI jobs assert install-time object presence, not pod
+# readiness, so operand pods are free to ImagePullBackOff (images not
+# side-loaded); they build on the kind-cluster composite.
 #
 # AUTH NOTE: pulls the tt-k8s-driver-manager OCI subchart + images with the
 # GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read). See the
@@ -137,6 +146,23 @@ jobs:
           fi
           echo "OK"
 
+      # Day-2 / reconcile coverage that needs no Tenstorrent hardware. These run
+      # against the driver-only install above; the hardware-dependent real driver
+      # upgrade (actual kmd version swap) lives in integration-rke2.yaml.
+      - name: Driver policy reconcile (idempotency + nodeSelector)
+        uses: ./.github/actions/driver-policy-reconcile
+
+      # Firmware path is reconcile-only here (no real flash) — see action.
+      - name: Firmware policy reconcile
+        uses: ./.github/actions/firmware-policy-reconcile
+
+      - name: Helm upgrade in place converges
+        uses: ./.github/actions/helm-upgrade-verify
+
+      # Tears the release down — keep last (before diagnostics).
+      - name: Helm uninstall is clean
+        uses: ./.github/actions/uninstall-verify
+
       - name: Diagnostics on failure
         if: failure()
         run: |
@@ -145,3 +171,165 @@ jobs:
           kubectl -n tt-operator-system get ds,deploy,sa
           kubectl get crd,clusterrole,clusterrolebinding -o name | grep tenstorrent || true
           kubectl get events -n tt-operator-system --sort-by=.lastTimestamp | tail -50
+
+  subset-install:
+    # US-A2: install each value permutation on a LIVE kind cluster (not just
+    # render) and assert exactly the selected operands are created. Also the
+    # structural half of US-A4 (preinstalled-driver: manager disabled → no
+    # driver objects, no driver CRDs). All entries use a k8s 1.34 node so
+    # resource.k8s.io is served (tt-dra-driver's DeviceClass) and every
+    # subchart's kubeVersion floor is satisfied. Operand pods may
+    # ImagePullBackOff (images not side-loaded) — only object presence/absence
+    # is checked, then the release is uninstalled.
+    runs-on: ubuntu-latest
+    name: subset-install (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: all-off
+            cert-manager: "false"
+            set-args: >-
+              --set node-feature-discovery.enabled=false
+              --set tt-k8s-driver-manager.enabled=false
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set tt-telemetry.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+            present: ""
+            absent: "nfd driver-manager fabric-manager dra telemetry jobset kubepmix"
+          - name: driver-only
+            cert-manager: "false"
+            set-args: >-
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set tt-telemetry.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+            present: "nfd driver-manager"
+            absent: "fabric-manager dra telemetry jobset kubepmix"
+            crd-present: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
+          - name: telemetry-only
+            cert-manager: "false"
+            # podMonitor renders a monitoring.coreos.com PodMonitor that needs
+            # the prometheus-operator CRDs (absent on kind) — disabled here just
+            # as the RKE2 install does (rke2-install-values).
+            set-args: >-
+              --set node-feature-discovery.enabled=false
+              --set tt-k8s-driver-manager.enabled=false
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
+            present: "telemetry"
+            absent: "nfd driver-manager fabric-manager dra jobset kubepmix"
+          - name: dra-stack
+            cert-manager: "false"
+            set-args: >-
+              --set node-feature-discovery.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
+            present: "driver-manager fabric-manager dra telemetry"
+            absent: "nfd jobset kubepmix"
+          - name: all-on
+            cert-manager: "true"
+            # Everything enabled; only the prometheus-operator-dependent
+            # PodMonitor is dropped (no prometheus-operator CRDs on kind), same
+            # as the RKE2 all-on install.
+            set-args: >-
+              --set tt-telemetry.podMonitor.enabled=false
+            present: "nfd driver-manager fabric-manager dra telemetry jobset kubepmix"
+            absent: ""
+          - name: preinstalled-driver
+            cert-manager: "false"
+            set-args: >-
+              --set tt-k8s-driver-manager.enabled=false
+              --set tt-fabric-manager.enabled=false
+              --set tt-dra-driver.enabled=false
+              --set jobset.enabled=false
+              --set kubepmix.enabled=false
+              --set tt-telemetry.podMonitor.enabled=false
+            present: "nfd telemetry"
+            absent: "driver-manager fabric-manager dra jobset kubepmix"
+            crd-absent: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Cluster + deps (cert-manager=${{ matrix.cert-manager }})
+        uses: ./.github/actions/kind-cluster
+        with:
+          cluster-name: subset-${{ matrix.name }}
+          node-image: kindest/node:v1.34.0
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          install-cert-manager: ${{ matrix.cert-manager }}
+      - name: Install permutation + assert operands
+        uses: ./.github/actions/verify-subset-install
+        with:
+          release-name: ttop
+          set-args: ${{ matrix.set-args }}
+          expect-present: ${{ matrix.present }}
+          expect-absent: ${{ matrix.absent }}
+          expect-crd-present: ${{ matrix.crd-present }}
+          expect-crd-absent: ${{ matrix.crd-absent }}
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -A || true
+          kubectl get crd -o name | grep tenstorrent || true
+          kubectl -n tt-operator-system describe pods || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true
+
+  cert-manager-prereq:
+    # US-A7: the kubepmix webhook needs cert-manager pre-installed (the
+    # umbrella renders cert-manager Issuer/Certificate resources). Prove both
+    # directions on one cluster that starts WITHOUT cert-manager: install fails
+    # clearly, then succeeds with the Certificate issued once cert-manager is
+    # present. 1.34 node to satisfy subchart kubeVersion floors.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Cluster + deps (no cert-manager yet)
+        uses: ./.github/actions/kind-cluster
+        with:
+          cluster-name: cm-prereq
+          node-image: kindest/node:v1.34.0
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          install-cert-manager: "false"
+      - name: kubepmix cert-manager prerequisite (negative + positive)
+        uses: ./.github/actions/verify-cert-manager-prereq
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -A || true
+          kubectl -n cert-manager get pods || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true
+
+  oci-install:
+    # US-A3 (stretch): install from the OCI-published chart with no checkout —
+    # the command the repo README documents. Self-contained chart, so no dep
+    # build; driver-manager-only to dodge cert-manager/DRA prereqs and private
+    # images. Asserts the release deploys and the controller object is created.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Cluster (GHCR login, no dep build)
+        uses: ./.github/actions/kind-cluster
+        with:
+          cluster-name: oci-install
+          node-image: kindest/node:v1.34.0
+          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          build-deps: "false"
+          install-cert-manager: "false"
+      - name: Install from the OCI-published chart
+        uses: ./.github/actions/verify-oci-install
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -A || true
+          helm list -A || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true

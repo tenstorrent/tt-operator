@@ -79,5 +79,8 @@ runs:
         echo "host kmd: ${got} (target: ${{ inputs.kmd-version }})"
         [ "$got" = "${{ inputs.kmd-version }}" ] || { echo "FAIL: kmd version mismatch"; exit 1; }
         ls -l /dev/tenstorrent/
-        test -e /dev/tenstorrent/0
+        # At least one char device node (count is host-dependent: n150 → 1,
+        # Blackhole loudbox → several).
+        find /dev/tenstorrent -maxdepth 1 -type c 2>/dev/null | grep -q . \
+          || { echo "FAIL: no /dev/tenstorrent device node present"; exit 1; }
         echo "OK: operator reinstalled tt-kmd ${{ inputs.kmd-version }} end-to-end"

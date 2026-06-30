@@ -1,0 +1,105 @@
+name: 'kind cluster for install-variation tests'
+description: |
+  Stand up a kind cluster for the umbrella install-variation jobs (subset
+  installs, cert-manager prereq, OCI install). Unlike kind-bootstrap it does
+  NOT side-load the driver-manager images: these jobs assert install-time
+  object presence/absence, not image pull or pod readiness, so operand pods
+  are allowed to ImagePullBackOff.
+
+  Creates the cluster (optionally pinned to a node image — pass a k8s 1.34
+  image for the dra-stack / all-on permutations, whose tt-dra-driver
+  DeviceClass needs resource.k8s.io served), logs in to GHCR for OCI pulls,
+  fakes the NFD tt-present label, optionally builds chart deps, and optionally
+  installs cert-manager (required before any permutation that enables
+  kubepmix — the umbrella's kubepmix.yaml renders cert-manager Issuer +
+  Certificate resources).
+
+  Assumes the caller already ran actions/checkout and azure/setup-helm.
+
+  AUTH NOTE: GHCR pulls use the GHCR_PULL_PAT secret (passed as ghcr-password)
+  because tt-operator's GITHUB_TOKEN lacks cross-repo package read. See the
+  helm-deps action for the canonical note. TODO: drop once access is granted.
+
+inputs:
+  cluster-name:
+    description: 'Name of the kind cluster to create.'
+    default: 'tt-install-variations'
+  node-image:
+    description: 'Optional kindest/node image (e.g. kindest/node:v1.34.0). Empty uses the kind-action default.'
+    default: ''
+  ghcr-username:
+    description: 'GHCR username for the PAT used to pull subcharts/images.'
+    default: 'kluongTT'
+  ghcr-password:
+    description: 'GHCR token (GHCR_PULL_PAT) with read:packages, SSO-authorized to tenstorrent.'
+    required: true
+  build-deps:
+    description: 'Run `helm dependency build` ("true"/"false"). Set false for the self-contained OCI-published chart.'
+    default: 'true'
+  install-cert-manager:
+    description: 'Install cert-manager ("true"/"false"). Required before enabling kubepmix.'
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create kind cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: ${{ inputs.cluster-name }}
+        # Empty node_image falls back to the kind-action default; the
+        # dra-stack / all-on jobs pass a 1.34 image so resource.k8s.io/v1
+        # (DRA, GA in 1.34) is served and the DeviceClass installs.
+        node_image: ${{ inputs.node-image }}
+
+    - name: Helm registry login (GHCR, for OCI pulls)
+      shell: bash
+      run: |
+        echo "${{ inputs.ghcr-password }}" | \
+          helm registry login ghcr.io --username "${{ inputs.ghcr-username }}" --password-stdin
+
+    - name: Fake the NFD tt-present label on every node
+      shell: bash
+      # Several operands' nodeAffinity requires the NFD PCI-presence label.
+      # We don't run NFD here (no PCI devices to detect), so stamp it by hand
+      # — the DaemonSet/Deployment objects exist either way, but this lets the
+      # pods at least schedule before they ImagePullBackOff.
+      run: |
+        for node in $(kubectl get nodes -o name); do
+          kubectl label "$node" feature.node.kubernetes.io/pci-1200_1e52.present=true --overwrite
+        done
+
+    - name: Register chart dependency repos + build
+      if: inputs.build-deps == 'true'
+      shell: bash
+      run: |
+        helm repo add node-feature-discovery https://kubernetes-sigs.github.io/node-feature-discovery/charts
+        helm repo update
+        helm dependency build charts/tt-operator
+
+    - name: Install cert-manager
+      if: inputs.install-cert-manager == 'true'
+      shell: bash
+      # Mirrors the repo README prereq step. `latest` keeps us off a stale pin;
+      # these jobs only need cert-manager to issue the kubepmix self-signed
+      # cert, so the exact patch version is immaterial.
+      run: |
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+        kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
+        kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
+        kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
+        # Deployment Available != webhook serving. Probe via a server-dry-run
+        # Issuer (goes through cert-manager's validating webhook) until it
+        # admits, so a later chart install can't race the webhook.
+        probe='apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata: {name: webhook-readiness-probe, namespace: cert-manager}
+        spec: {selfSigned: {}}'
+        echo "Waiting for the cert-manager webhook to admit CRs..."
+        for i in $(seq 1 30); do
+          if echo "$probe" | kubectl apply --dry-run=server -f - >/dev/null 2>&1; then
+            echo "cert-manager webhook ready"; break
+          fi
+          [ "$i" -eq 30 ] && { echo "::error::cert-manager webhook never became ready"; exit 1; }
+          sleep 5
+        done

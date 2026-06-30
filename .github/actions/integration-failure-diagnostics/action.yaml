@@ -43,6 +43,7 @@ runs:
         echo "===== tt-telemetry /metrics scratch (/tmp, from verify-tt-stack) ====="
         echo "--- /tmp/pf.log (port-forward) ---";       cat /tmp/pf.log 2>&1 || echo "no /tmp/pf.log"
         echo "--- /tmp/metrics.txt (tail) ---"; tail -20 /tmp/metrics.txt 2>&1 || echo "no /tmp/metrics.txt"
+        echo "--- /tmp/quiesce.log unique values (deploy-gate poll, from driver-policy-upgrade) ---"; sort -u /tmp/quiesce.log 2>&1 || echo "no /tmp/quiesce.log"
         echo "===== rke2-server journal ====="
         sudo journalctl -u rke2-server --no-pager -n 200
         echo "===== controller logs ====="

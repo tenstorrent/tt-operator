@@ -3,12 +3,17 @@ description: |
   End-to-end DRA check: tt-dra-driver's kubelet plugin discovers ASICs via the
   TTFM agent's GetTopology RPC and publishes a ResourceSlice device per MMIO
   ASIC; a Pod requesting deviceClassName tenstorrent.com triggers per-device CDI
-  edits that mount /dev/tenstorrent/<N> into the container.
+  edits that mount a /dev/tenstorrent device into the container.
 
-  Run with continue-on-error at the call site (pending tt-dra-driver#14: the
-  kubelet plugin doesn't retry FM GetTopology on NOT_DISCOVERED, so the slice
-  can stay permanently empty in CI even when everything else is healthy). The
-  rest of the job is the real signal until #14 lands.
+  Non-gating (continue-on-error at the call site). tt-dra-driver#14 — retry
+  GetTopology on TOPOLOGY_NOT_DISCOVERED instead of publishing a
+  permanently-empty ResourceSlice — merged 2026-06-16 and ships in the pinned
+  tt-dra-driver 0.0.31 (its push-helm CI sets chart version == appVersion ==
+  image tag, all built from that commit; 0.0.31 == commit count at the #14
+  merge). So the old publish-empty-and-never-retry bug is gone: if the claim
+  still never allocates here, it's because the runner has no staged fabric
+  topology (GetTopology stays NOT_DISCOVERED) — an environment limitation, not a
+  driver bug.
 
 inputs:
   namespace:
@@ -25,14 +30,7 @@ runs:
         DS=$(kubectl -n "$NS" get ds -l app.kubernetes.io/name=tt-dra-driver \
           -o jsonpath='{.items[0].metadata.name}')
         kubectl -n "$NS" rollout status "ds/$DS" --timeout=3m
-        # TODO(tt-dra-driver#14): drop this poll once upstream adds the
-        # TOPOLOGY_NOT_DISCOVERED retry loop; today the slice may never populate.
-        timeout 180 bash -c '
-          until [ "$(kubectl get resourceslices \
-              -o jsonpath="{range .items[*]}{.spec.devices[*].name}{end}" 2>/dev/null | wc -w)" -gt 0 ]; do
-            sleep 3
-          done'
-        kubectl get resourceslices -o yaml | grep -A4 "devices:"
+
         kubectl apply -f - <<'EOF'
         apiVersion: resource.k8s.io/v1
         kind: ResourceClaim
@@ -59,7 +57,7 @@ runs:
               command:
                 - sh
                 - -c
-                - 'test -c /dev/tenstorrent/0 && ls -l /dev/tenstorrent && echo DRA_OK'
+                - 'ls -l /dev/tenstorrent && [ -n "$(ls -A /dev/tenstorrent 2>/dev/null)" ] && echo DRA_OK'
               resources:
                 claims:
                   - name: chip
@@ -67,13 +65,28 @@ runs:
             - name: chip
               resourceClaimName: tt-smoke
         EOF
-        timeout 180 bash -c '
+
+        # No explicit wait-for-slice workaround anymore: tt-dra-driver#14 makes
+        # the plugin retry GetTopology until topology is up, then publish. Wait
+        # for the scheduler to allocate the claim (which transitively waits for
+        # the slice). Bounded — if topology never resolves on this runner the
+        # claim stays unallocated; dump diagnostics and let continue-on-error
+        # absorb it, rather than burning the old 3m timeout.
+        if ! timeout 90 bash -c '
           until kubectl get resourceclaim tt-smoke \
             -o jsonpath="{.status.allocation.devices.results[0].device}" 2>/dev/null | grep -q .; do
             sleep 3
-          done'
-        kubectl get resourceclaim tt-smoke -o yaml | sed -n '/status:/,$p'
-        kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/tt-smoke --timeout=5m
-        kubectl logs pod/tt-smoke
-        kubectl logs pod/tt-smoke | grep -q DRA_OK
-        echo "OK: DRA claim bound, /dev/tenstorrent/0 visible inside the claimed Pod"
+          done'; then
+          echo "::warning::ResourceClaim never allocated within 90s — likely no fabric topology staged on this runner (GetTopology NOT_DISCOVERED)."
+          kubectl get resourceslices -o yaml || true
+          kubectl -n "$NS" logs "ds/$DS" --tail=80 || true
+          kubectl -n default describe resourceclaim tt-smoke || true
+          kubectl -n default describe pod tt-smoke || true
+          exit 1
+        fi
+        kubectl get resourceslices -o yaml | sed -n '/devices:/,$p' | head -20
+        kubectl -n default get resourceclaim tt-smoke -o yaml | sed -n '/status:/,$p'
+        kubectl -n default wait --for=jsonpath='{.status.phase}'=Succeeded pod/tt-smoke --timeout=2m
+        kubectl -n default logs pod/tt-smoke
+        kubectl -n default logs pod/tt-smoke | grep -q DRA_OK
+        echo "OK: DRA claim bound, a /dev/tenstorrent device visible inside the claimed Pod"

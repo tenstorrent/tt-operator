@@ -1,0 +1,131 @@
+name: 'Verify subset install'
+description: |
+  Install one umbrella value permutation on a live cluster and assert that
+  exactly the selected operands are present — the live counterpart to the
+  static render-validate matrix (US-A2). Installs WITHOUT --wait (operand pods
+  may ImagePullBackOff on kind, since only object presence is checked, not
+  readiness), asserts each expected component's workload exists and each
+  excluded one is absent, optionally checks CRD presence/absence, then
+  uninstalls so the cluster can be reused.
+
+  Component detection is by name substring across all namespaces, which is
+  robust to the release-name prefix and to subcharts that land in their own
+  namespace (e.g. kubepmix in kube-pmix).
+
+inputs:
+  release-name:
+    description: Helm release name.
+    default: ttop
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  set-args:
+    description: 'Permutation flags, e.g. "--set jobset.enabled=false". Word-split, so values must be bracket/space-free.'
+    default: ''
+  expect-present:
+    description: 'Space-separated component keys expected present (nfd driver-manager fabric-manager dra telemetry jobset kubepmix).'
+    default: ''
+  expect-absent:
+    description: 'Space-separated component keys expected absent.'
+    default: ''
+  expect-crd-present:
+    description: 'Space-separated CRD names expected installed.'
+    default: ''
+  expect-crd-absent:
+    description: 'Space-separated CRD names expected NOT installed.'
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      env:
+        REL: ${{ inputs.release-name }}
+        NS: ${{ inputs.namespace }}
+        EXPECT_PRESENT: ${{ inputs.expect-present }}
+        EXPECT_ABSENT: ${{ inputs.expect-absent }}
+        CRD_PRESENT: ${{ inputs.expect-crd-present }}
+        CRD_ABSENT: ${{ inputs.expect-crd-absent }}
+      run: |
+        set -uo pipefail
+
+        # Map component key -> name substring used to detect its workloads.
+        declare -A PAT=(
+          [nfd]='node-feature-discovery'
+          [driver-manager]='tt-k8s-driver-manager'
+          [fabric-manager]='tt-fabric-manager'
+          [dra]='tt-dra-driver'
+          [telemetry]='tt-telemetry'
+          [jobset]='jobset'
+          [kubepmix]='kube-pmix'
+        )
+
+        echo "::group::helm install (${REL})"
+        # Intentional word-split of the permutation flags (bracket/space-free).
+        # shellcheck disable=SC2206
+        extra=( ${{ inputs.set-args }} )
+        if ! helm install "$REL" charts/tt-operator -n "$NS" --create-namespace ${extra[@]+"${extra[@]}"}; then
+          echo "::error::helm install failed for permutation '${REL}'"
+          exit 1
+        fi
+        echo "::endgroup::"
+
+        # helm install applies manifests synchronously, but give the API a
+        # beat to register the objects before we read them back.
+        sleep 10
+
+        # Snapshot all workloads (every namespace) once; match by substring.
+        ALL=$(kubectl get deploy,daemonset,statefulset -A --no-headers \
+          -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name 2>/dev/null || true)
+        echo "::group::workloads after install"
+        echo "${ALL:-<none>}"
+        echo "::endgroup::"
+
+        fail=0
+
+        for c in $EXPECT_PRESENT; do
+          pat="${PAT[$c]:-}"
+          if [ -z "$pat" ]; then echo "::error::unknown component key '$c'"; fail=1; continue; fi
+          if echo "$ALL" | grep -q "$pat"; then
+            echo "present OK: $c ($pat)"
+          else
+            echo "::error::expected '$c' present but found no workload matching '$pat'"
+            fail=1
+          fi
+        done
+
+        for c in $EXPECT_ABSENT; do
+          pat="${PAT[$c]:-}"
+          if [ -z "$pat" ]; then echo "::error::unknown component key '$c'"; fail=1; continue; fi
+          if echo "$ALL" | grep -q "$pat"; then
+            echo "::error::expected '$c' absent but found:"
+            echo "$ALL" | grep "$pat"
+            fail=1
+          else
+            echo "absent OK: $c ($pat)"
+          fi
+        done
+
+        for crd in $CRD_PRESENT; do
+          if kubectl get crd "$crd" >/dev/null 2>&1; then
+            echo "CRD present OK: $crd"
+          else
+            echo "::error::expected CRD '$crd' installed but it is missing"
+            fail=1
+          fi
+        done
+
+        for crd in $CRD_ABSENT; do
+          if kubectl get crd "$crd" >/dev/null 2>&1; then
+            echo "::error::expected CRD '$crd' absent but it is installed"
+            fail=1
+          else
+            echo "CRD absent OK: $crd"
+          fi
+        done
+
+        echo "::group::helm uninstall (${REL})"
+        helm uninstall "$REL" -n "$NS" || true
+        echo "::endgroup::"
+
+        exit "$fail"

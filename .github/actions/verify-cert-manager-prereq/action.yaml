@@ -1,0 +1,115 @@
+name: 'Verify cert-manager prerequisite (kubepmix)'
+description: |
+  Prove the documented cert-manager prerequisite for kubepmix (US-A7), both
+  directions, on a live cluster that starts WITHOUT cert-manager:
+
+    1. Negative — with kubepmix enabled but cert-manager absent, `helm install`
+       fails with a clear signal pointing at the missing cert-manager CRDs
+       (the umbrella's kubepmix.yaml renders cert-manager.io/v1 Issuer +
+       Certificate resources).
+    2. Positive — after installing cert-manager, the same install succeeds and
+       the kubepmix Certificate is issued (Ready) with its TLS secret created.
+
+  Assumes a cluster with chart deps already built (kind-cluster build-deps),
+  and that cert-manager is NOT yet installed.
+
+inputs:
+  release-name:
+    description: Helm release name.
+    default: ttop-pmix
+  namespace:
+    description: Release namespace (kubepmix is consolidated here for the check).
+    default: tt-operator-system
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Negative — install without cert-manager fails clearly
+      shell: bash
+      env:
+        REL: ${{ inputs.release-name }}
+        NS: ${{ inputs.namespace }}
+      run: |
+        set -uo pipefail
+        # Only kubepmix on; it is the sole cert-manager-dependent component.
+        set +e
+        out=$(helm install "$REL" charts/tt-operator -n "$NS" --create-namespace \
+          --set node-feature-discovery.enabled=false \
+          --set tt-k8s-driver-manager.enabled=false \
+          --set tt-fabric-manager.enabled=false \
+          --set tt-dra-driver.enabled=false \
+          --set tt-telemetry.enabled=false \
+          --set jobset.enabled=false \
+          --set kubepmix.namespace="$NS" 2>&1)
+        rc=$?
+        set -e
+        echo "$out"
+        if [ "$rc" -eq 0 ]; then
+          echo "::error::install unexpectedly succeeded without cert-manager"
+          helm uninstall "$REL" -n "$NS" || true
+          exit 1
+        fi
+        if echo "$out" | grep -Eq 'no matches for kind "(Issuer|Certificate)"|ensure CRDs are installed|cert-manager\.io'; then
+          echo "OK: failure clearly points at the missing cert-manager prerequisite"
+        else
+          echo "::error::install failed but the message did not point at cert-manager"
+          exit 1
+        fi
+        # Helm records a failed release; clear it before the positive attempt.
+        helm uninstall "$REL" -n "$NS" || true
+
+    - name: Install cert-manager
+      shell: bash
+      run: |
+        set -euo pipefail
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+        kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
+        kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
+        kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
+        # Deployment Available != webhook serving — probe until it admits CRs.
+        probe='apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata: {name: webhook-readiness-probe, namespace: cert-manager}
+        spec: {selfSigned: {}}'
+        echo "Waiting for the cert-manager webhook to admit CRs..."
+        for i in $(seq 1 30); do
+          if echo "$probe" | kubectl apply --dry-run=server -f - >/dev/null 2>&1; then
+            echo "cert-manager webhook ready"; break
+          fi
+          [ "$i" -eq 30 ] && { echo "::error::cert-manager webhook never became ready"; exit 1; }
+          sleep 5
+        done
+
+    - name: Positive — install succeeds and the kubepmix Certificate is issued
+      shell: bash
+      env:
+        REL: ${{ inputs.release-name }}
+        NS: ${{ inputs.namespace }}
+      run: |
+        set -euo pipefail
+        helm install "$REL" charts/tt-operator -n "$NS" --create-namespace \
+          --set node-feature-discovery.enabled=false \
+          --set tt-k8s-driver-manager.enabled=false \
+          --set tt-fabric-manager.enabled=false \
+          --set tt-dra-driver.enabled=false \
+          --set tt-telemetry.enabled=false \
+          --set jobset.enabled=false \
+          --set kubepmix.namespace="$NS"
+
+        # Assert a Certificate actually exists before waiting (a bare
+        # `wait --all` succeeds vacuously on an empty set).
+        certs=$(kubectl -n "$NS" get certificate --no-headers 2>/dev/null | wc -l | tr -d ' ')
+        echo "kubepmix Certificates found: $certs"
+        [ "$certs" -ge 1 ] || { echo "::error::kubepmix did not create a Certificate"; exit 1; }
+
+        kubectl -n "$NS" wait --for=condition=Ready certificate --all --timeout=180s
+
+        # The issued TLS secret named by each Certificate must exist.
+        for sec in $(kubectl -n "$NS" get certificate \
+            -o jsonpath='{range .items[*]}{.spec.secretName}{"\n"}{end}'); do
+          [ -n "$sec" ] || continue
+          kubectl -n "$NS" get secret "$sec"
+          echo "TLS secret present: $sec"
+        done
+
+        helm uninstall "$REL" -n "$NS" || true

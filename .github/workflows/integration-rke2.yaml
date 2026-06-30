@@ -50,7 +50,9 @@ jobs:
           - tt-ubuntu-2204-bh-loudbox-viommu-stable
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # Bumped from 30: the driver-upgrade phase adds two more DKMS builds (to 2.8.0,
+    # then restore to the preloaded version) on top of the initial install build.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -94,10 +96,35 @@ jobs:
       - name: Verify tt-fabric-manager + tt-telemetry
         uses: ./.github/actions/verify-tt-stack
 
+      # With the device up and telemetry settled, assert the operands stop
+      # flapping (tolerates the collector's expected pre-driver crash-loop).
+      - name: Stack is stable (no new restarts)
+        uses: ./.github/actions/verify-stack-stable
+
       - name: DRA claim smoke
-        # continue-on-error pending tt-dra-driver#14 (empty-ResourceSlice race).
+        # Non-gating: tt-dra-driver#14 (retry GetTopology on NOT_DISCOVERED)
+        # landed 2026-06-16 and ships in the pinned 0.0.31, so the old
+        # empty-ResourceSlice bug is fixed — but the claim still can't allocate
+        # on a runner with no staged fabric topology. Kept continue-on-error
+        # until a topology-equipped runner confirms a green allocation.
         continue-on-error: true
         uses: ./.github/actions/dra-smoke
+
+      # Real in-place driver upgrade (from -> 2.8.0 -> restore) + telemetry
+      # quiesce assertion. Last, because it churns the device (telemetry/DRA
+      # disruption is expected) and restores the preloaded version at the end.
+      - name: Driver upgrade + telemetry quiesce
+        uses: ./.github/actions/driver-policy-upgrade
+        with:
+          from-version: ${{ steps.preflight.outputs.kmd-version }}
+          to-version: "2.8.0"
+
+      # US-A4: with the kmd restored (module loaded), disable the driver
+      # manager in place and prove the device(s) stay allocatable without it.
+      # Last, because it permanently reconfigures the release (VM is torn down
+      # at job end anyway).
+      - name: Pre-installed-driver mode (device persists without the manager)
+        uses: ./.github/actions/verify-preinstalled-driver
 
       - name: Diagnostics on failure
         if: failure()

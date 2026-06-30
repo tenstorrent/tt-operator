@@ -1,0 +1,132 @@
+name: Driver upgrade via TenstorrentDriverPolicy (US-B2 + US-B4)
+description: |
+  Real in-place driver upgrade on hardware. With the policy already at FROM (the
+  runner's preloaded version, installed by driver-policy-install), patch
+  spec.version to TO, confirm the host kernel module transitions to TO with no
+  orphaned module, then restore back to FROM.
+
+  Also asserts the tt-telemetry quiesce (tt-operator#59): the controller flips the
+  node label tenstorrent.com/deploy.tt-telemetry=false *proactively* when it
+  detects the upgrade (before insmod) and clears it only once the new version's
+  builder pod is Ready — so the gate sits at "false" for the whole build window.
+  We poll the node label across the upgrade, assert we saw "false" (drained), then
+  assert it clears (restored).
+
+  Mechanism notes (from tt-k8s-driver-manager source): the per-CR DaemonSet
+  (ttdrv-<cr>) is updated IN PLACE on a version change — same name/uid, and
+  .status.daemonSet does NOT change — so the host /sys/module/tenstorrent/version
+  poll (the builder's own readiness signal) is the definitive "new version live"
+  gate, not the DS name/status.
+
+  No-op guard: if FROM already equals TO the upgrade is degenerate; the step logs
+  a notice and skips (pass a distinct to-version to exercise it).
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  cr-name:
+    description: TenstorrentDriverPolicy to upgrade (must already exist at from-version).
+    default: ci-smoke
+  from-version:
+    description: Current/baseline tt-kmd version (from tt-runner-preflight). Restored at the end.
+    required: true
+  to-version:
+    description: tt-kmd version to upgrade to.
+    default: "2.8.0"
+  wait-timeout-seconds:
+    description: Max seconds to wait for the host module to reach each target version (image pull + DKMS build is slow).
+    default: "900"
+
+runs:
+  using: composite
+  steps:
+    - name: Upgrade from-version → to-version → restore, observing the telemetry quiesce
+      shell: bash
+      run: |
+        set -euo pipefail
+        NS='${{ inputs.namespace }}'
+        CR='${{ inputs.cr-name }}'
+        FROM='${{ inputs.from-version }}'
+        TO='${{ inputs.to-version }}'
+        TIMEOUT='${{ inputs.wait-timeout-seconds }}'
+        GATE='tenstorrent.com/deploy.tt-telemetry'
+
+        host_version() { cat /sys/module/tenstorrent/version 2>/dev/null || true; }
+
+        # ≥1 char device node, agnostic to device count (n150 → 1, loudbox → N).
+        device_present() { find /dev/tenstorrent -maxdepth 1 -type c 2>/dev/null | grep -q .; }
+
+        wait_for_host_version() {
+          local target="$1" deadline=$(( SECONDS + TIMEOUT ))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            [ "$(host_version)" = "$target" ] && return 0
+            sleep 10
+          done
+          echo "::error::timed out after ${TIMEOUT}s waiting for kmd ${target} (host=$(host_version))"
+          kubectl -n "$NS" get ds "ttdrv-${CR}" -o wide || true
+          kubectl -n "$NS" get pods -l "driver.tenstorrent.com/cr=${CR}" -o wide || true
+          return 1
+        }
+
+        gate_value() {
+          kubectl get "$NODE" -o json 2>/dev/null \
+            | jq -r --arg k "$GATE" '.metadata.labels[$k] // "absent"' 2>/dev/null || echo absent
+        }
+
+        set_version() {
+          kubectl patch tenstorrentdriverpolicies.driver.tenstorrent.com "$CR" \
+            --type merge -p "{\"spec\":{\"version\":\"$1\"}}"
+        }
+
+        echo "=== precondition: host at FROM=${FROM} ==="
+        [ "$(host_version)" = "$FROM" ] || { echo "::error::expected host kmd ${FROM}, got '$(host_version)'"; exit 1; }
+
+        if [ "$FROM" = "$TO" ]; then
+          echo "::notice::from-version equals to-version (${FROM}) — upgrade is a no-op; skipping. Pass a distinct to-version to exercise US-B2."
+          exit 0
+        fi
+
+        NODE=$(kubectl get nodes -l feature.node.kubernetes.io/pci-1200_1e52.present=true -o name | head -1)
+        [ -n "$NODE" ] || { echo "::error::no tt-present node found"; exit 1; }
+        echo "tt node: ${NODE}"
+
+        # Observe the telemetry quiesce gate across the upgrade. The poller never
+        # fails (|| echo absent), so set -e can't kill it mid-window.
+        : > /tmp/quiesce.log
+        ( while :; do echo "$(gate_value)" >> /tmp/quiesce.log; sleep 1; done ) &
+        POLLER=$!
+        trap 'kill "$POLLER" 2>/dev/null || true' EXIT
+
+        echo "=== upgrade FROM=${FROM} -> TO=${TO} ==="
+        set_version "$TO"
+        wait_for_host_version "$TO"
+
+        kill "$POLLER" 2>/dev/null || true; trap - EXIT
+        echo "deploy-gate values seen during upgrade (unique): $(sort -u /tmp/quiesce.log | tr '\n' ' ')"
+        if ! grep -qx 'false' /tmp/quiesce.log; then
+          echo "::error::never observed ${GATE}=false during the upgrade — telemetry quiesce (tt-operator#59) not seen"
+          exit 1
+        fi
+        echo "OK: observed telemetry quiesce gate ${GATE}=false during the swap"
+
+        echo "=== verify TO=${TO} is live, exactly one module loaded ==="
+        device_present || { echo "::error::no /dev/tenstorrent device node after upgrade to ${TO}"; exit 1; }
+        nmods=$(lsmod | awk '$1=="tenstorrent"' | wc -l | tr -d ' ')
+        [ "$nmods" -eq 1 ] || { echo "::error::expected exactly 1 tenstorrent module, found ${nmods}"; lsmod | grep -i tenstorrent || true; exit 1; }
+        echo "host kmd now: $(host_version)"
+
+        echo "=== wait for the quiesce gate to clear (telemetry restored) ==="
+        cleared=0
+        for _ in $(seq 1 18); do
+          [ "$(gate_value)" != "false" ] && { cleared=1; break; }
+          sleep 5
+        done
+        [ "$cleared" -eq 1 ] || { echo "::error::deploy-gate ${GATE} stuck at false after upgrade — telemetry not restored"; exit 1; }
+        echo "OK: quiesce gate cleared — telemetry re-enabled"
+
+        echo "=== restore TO=${TO} -> FROM=${FROM} ==="
+        set_version "$FROM"
+        wait_for_host_version "$FROM"
+        device_present || { echo "::error::no /dev/tenstorrent device node after restore to ${FROM}"; exit 1; }
+        echo "OK: upgraded ${FROM} -> ${TO}, then restored -> ${FROM} end-to-end"

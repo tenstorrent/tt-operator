@@ -1,0 +1,71 @@
+name: 'Verify pre-installed-driver mode (US-A4)'
+description: |
+  Model an admin who manages tt-kmd externally (tt-k8s-driver-manager.enabled=
+  false) and prove the stack keeps working without the driver manager. Runs
+  LAST on the hardware tier, after driver-policy-upgrade has restored the
+  preloaded kmd (so the host module is loaded and the /dev/tenstorrent device
+  nodes are present). Reconfigures the running release in place to disable the
+  driver manager and asserts:
+
+    - the driver-manager controller Deployment is removed;
+    - the host kernel module survives (the devices are independent of the
+      controller — exactly one tenstorrent module stays loaded and the
+      /dev/tenstorrent device nodes persist);
+    - telemetry keeps the device monitored (best-effort; informational).
+
+  The kind tier covers the structural half of US-A4 (a fresh install with the
+  manager disabled renders no driver objects and no driver CRDs).
+
+inputs:
+  namespace:
+    description: Release namespace.
+    default: tt-operator-system
+  release-name:
+    description: Helm release name.
+    default: tt-operator
+
+runs:
+  using: composite
+  steps:
+    - name: Disable driver-manager in place; device must persist
+      shell: bash
+      run: |
+        set -uo pipefail
+        NS='${{ inputs.namespace }}'
+        REL='${{ inputs.release-name }}'
+
+        # Count char device nodes — agnostic to how many devices the host has
+        # (an n150 exposes one, a Blackhole loudbox several).
+        device_count() { find /dev/tenstorrent -maxdepth 1 -type c 2>/dev/null | wc -l | tr -d ' '; }
+
+        echo "=== precondition: host module loaded, device(s) present ==="
+        [ "$(device_count)" -ge 1 ] || { echo "::error::no /dev/tenstorrent device nodes before the disable — driver not loaded"; exit 1; }
+
+        echo "=== helm upgrade: tt-k8s-driver-manager.enabled=false ==="
+        helm upgrade "$REL" charts/tt-operator -n "$NS" --reuse-values \
+          --set tt-k8s-driver-manager.enabled=false
+
+        echo "=== controller Deployment must be removed ==="
+        gone=0
+        for _ in $(seq 1 24); do
+          # Capture then match (avoid pipefail+SIGPIPE on `kubectl | grep -q`).
+          deploys=$(kubectl -n "$NS" get deploy -o name 2>/dev/null || true)
+          case "$deploys" in
+            *tt-k8s-driver-manager*) ;;
+            *) gone=1; break ;;
+          esac
+          sleep 5
+        done
+        kubectl -n "$NS" get deploy -o name || true
+        [ "$gone" -eq 1 ] || { echo "::error::driver-manager controller still present after disable"; exit 1; }
+        echo "OK: driver-manager controller Deployment removed"
+
+        echo "=== device(s) + module survive without the manager ==="
+        ndev=$(device_count)
+        [ "$ndev" -ge 1 ] || { echo "::error::/dev/tenstorrent device nodes disappeared after disabling the manager"; exit 1; }
+        nmods=$(lsmod | awk '$1=="tenstorrent"' | wc -l | tr -d ' ')
+        [ "$nmods" -eq 1 ] || { echo "::error::expected exactly 1 tenstorrent module, found ${nmods}"; lsmod | grep -i tenstorrent || true; exit 1; }
+        echo "OK: ${ndev} device node(s) allocatable with the driver manager disabled (kmd $(cat /sys/module/tenstorrent/version 2>/dev/null))"
+
+        echo "=== telemetry still monitoring the device (informational) ==="
+        kubectl -n "$NS" get ds,pods | grep -i tt-telemetry || echo "note: no tt-telemetry workload matched"
