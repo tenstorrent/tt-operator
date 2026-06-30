@@ -15,6 +15,7 @@ name: docs
 #      explicit approval before it publishes.
 
 on:
+  workflow_dispatch:        # manual deploy (e.g. against a release tag)
   push:
     branches: [main]
     tags: ["v*.*.*"]
