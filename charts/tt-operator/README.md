@@ -20,7 +20,7 @@ Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling,
 | https://kubernetes-sigs.github.io/node-feature-discovery/charts | node-feature-discovery | 0.18.3 |
 | oci://ghcr.io/tenstorrent/helm | tt-dra-driver | 0.0.31 |
 | oci://ghcr.io/tenstorrent/helm | tt-k8s-driver-manager | 0.0.5 |
-| oci://ghcr.io/tenstorrent/tt-telemetry-helm | tt-telemetry | 0.0.10-alpha |
+| oci://ghcr.io/tenstorrent/helm | tt-telemetry | 0.1.1 |
 | oci://ghcr.io/tenstorrent/ttfm-helm | tt-fabric-manager(ttfm) | 0.2.27-156.sha-957f2ad |
 | oci://registry.k8s.io/jobset/charts | jobset | 0.12.0 |
 
@@ -44,5 +44,5 @@ Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling,
 | tt-telemetry.daemonset | object | `{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"feature.node.kubernetes.io/pci-1200_1e52.present","operator":"In","values":["true"]},{"key":"tenstorrent.com/deploy.tt-telemetry","operator":"NotIn","values":["false"]}]}]}}}}` | Collector DaemonSet nodeAffinity — schedule on TT-equipped nodes and honor the tenstorrent.com/deploy.tt-telemetry drain gate. |
 | tt-telemetry.enabled | bool | `true` | Install tt-telemetry (device telemetry → Prometheus endpoint + web GUI). Alpha software. |
 | tt-telemetry.image.repository | string | `"ghcr.io/tenstorrent/tt-telemetry"` | tt-telemetry image repository, pinned to the published org-namespace image. |
-| tt-telemetry.image.tag | string | `"0.0.10-alpha"` | tt-telemetry image tag. Keep in lockstep with the tt-telemetry subchart version in Chart.yaml. |
+| tt-telemetry.image.tag | string | `"0.1.1"` | tt-telemetry image tag. Keep in lockstep with the tt-telemetry subchart version in Chart.yaml. |
 | tt-telemetry.namespace | string | `"tt-operator-system"` | Namespace for tt-telemetry resources. The subchart hardcodes this (no Release.Namespace fallback), so match your install namespace. |

@@ -44,8 +44,8 @@ dependencies:
   # a Prometheus HTTP endpoint and a simple web GUI.
   # Source: github.com/tenstorrent/tt-telemetry
   - name: tt-telemetry
-    version: "0.0.10-alpha"
-    repository: "oci://ghcr.io/tenstorrent/tt-telemetry-helm"
+    version: "0.1.1"
+    repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-telemetry.enabled
   # JobSet (kubernetes-sigs/jobset): groups related Jobs into a single
   # managed unit; used by multi-node training workloads on Tenstorrent

@@ -1,7 +1,7 @@
 suite: tt-telemetry aggregator + observability (umbrella consumption)
 # Render contract for the aggregator-gated resources (Deployment, Service,
 # Ingress — all behind aggregator.enabled), the config-driven ConfigMap, and the
-# PodMonitor, as the umbrella deploys tt-telemetry (pinned v0.0.10-alpha). Each
+# PodMonitor, as the umbrella deploys tt-telemetry. Each
 # test scopes itself to one template. Other subcharts are disabled to keep the
 # render small and dodge tt-dra-driver's k8s>=1.33 floor.
 release:
@@ -145,8 +145,16 @@ tests:
       - isNotEmpty:
           path: data
 
-  - it: renders the PodMonitor into the monitoring namespace by default
+  - it: drops the PodMonitor by default (opt-in since tt-telemetry 0.1.x)
     template: charts/tt-telemetry/templates/podmonitor.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the PodMonitor when podMonitor.enabled=true
+    template: charts/tt-telemetry/templates/podmonitor.yaml
+    set:
+      tt-telemetry.podMonitor.enabled: true
     asserts:
       - isKind:
           of: PodMonitor
@@ -171,11 +179,3 @@ tests:
       - equal:
           path: spec.podMetricsEndpoints[0].port
           value: telemetry-http
-
-  - it: drops the PodMonitor when podMonitor.enabled=false
-    template: charts/tt-telemetry/templates/podmonitor.yaml
-    set:
-      tt-telemetry.podMonitor.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 0
