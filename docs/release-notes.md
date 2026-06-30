@@ -29,23 +29,13 @@ umbrella Helm chart, validated end to end on real Tenstorrent hardware.
 | Driver install, upgrade, scoping | `TenstorrentDriverPolicy` |
 | Firmware flashing | `TenstorrentFirmwarePolicy` |
 | Telemetry | Prometheus `/metrics` |
-
-### Beta features
-
-The following components are installed by default and available for evaluation.
-Their core behavior works today. Some capabilities are still maturing and may
-change.
-
-- **Fabric Manager.** Topology resolution across devices and hosts.
-- **Device Allocation (DRA).** Publishing devices as schedulable resources via
-  Kubernetes Dynamic Resource Allocation.
-- **Multi-Node Scheduling.** JobSet plus PMIx environment injection for
-  multi-node jobs.
+| Fabric topology resolution | Fabric Manager gRPC API |
+| Device allocation | Dynamic Resource Allocation (`ResourceClaim`) |
+| Multi-node scheduling | JobSet and PMIx |
 
 ### Requirements
 
-- Kubernetes 1.27 or later. The Dynamic Resource Allocation beta features require
-  1.33 or later.
+- Kubernetes 1.27 or later. Device Allocation (DRA) requires 1.33 or later.
 - cert-manager installed on the cluster. It is required by the bundled PMIx
   admission webhook. See [Prerequisites](prerequisites.md).
 - Network access to the container registry hosting the Tenstorrent images.
@@ -60,5 +50,3 @@ environments.
   resources.
 - Air-gapped and private-registry installs are not yet covered by a documented
   workflow.
-- The deeper per-feature capabilities of the beta components above are not yet
-  part of the supported surface.

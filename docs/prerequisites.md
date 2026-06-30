@@ -21,7 +21,7 @@ If you do not need `kubepmix`, you can skip cert-manager by disabling it:
 ## Kubernetes version
 
 - 1.27 or later for the core stack.
-- 1.33 or later if you use the Dynamic Resource Allocation driver *(beta)*, which
+- 1.33 or later if you use the Dynamic Resource Allocation driver, which
   relies on the `DynamicResourceAllocation` feature being available on the API
   server and kubelet.
 

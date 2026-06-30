@@ -36,7 +36,6 @@ troubleshooting
 | Status | Meaning |
 |---|---|
 | **Supported** | Generally available in this release and covered by the documented workflows. |
-| **Beta** | Installed by default and usable for evaluation. Some capabilities are still maturing and may change. |
 
 | Component | Capability | Status |
 |---|---|---|
@@ -44,6 +43,6 @@ troubleshooting
 | Driver Manager | Installs, upgrades, and scopes `tt-kmd` via policy resources | Supported |
 | Firmware | Flashes device firmware via a policy resource | Supported |
 | Telemetry | Exposes a Prometheus `/metrics` endpoint | Supported |
-| Fabric Manager | Resolves fabric topology across devices and hosts | Beta |
-| Device Allocation (DRA) | Publishes devices as schedulable resources | Beta |
-| Multi-Node Scheduling | JobSet and PMIx wiring for multi-node jobs | Beta |
+| Fabric Manager | Resolves fabric topology across devices and hosts | Supported |
+| Device Allocation (DRA) | Publishes devices as schedulable resources | Supported |
+| Multi-Node Scheduling | JobSet and PMIx wiring for multi-node jobs | Supported |

@@ -73,8 +73,7 @@ kubectl get resourceslices
 
 If there are no device entries, the [DRA Driver](https://docs.tenstorrent.com/tt-dra-driver/) has no
 resolvable fabric topology on the node, so it publishes nothing and the claim
-cannot bind. This is an environment limitation, not a fault, and this path is
-beta.
+cannot bind. This is an environment limitation, not a fault.
 
 ## Telemetry collector restarts during a driver install
 

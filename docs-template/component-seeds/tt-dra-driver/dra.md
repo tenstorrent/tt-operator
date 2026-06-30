@@ -1,10 +1,5 @@
 # Device Allocation (DRA)
 
-```{attention}
-**Beta feature.** Installed by default and usable for evaluation. Some
-capabilities are still maturing and may change.
-```
-
 The DRA Driver exposes Tenstorrent devices to workloads using Kubernetes
 [Dynamic Resource Allocation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/).
 A per-node kubelet plugin discovers devices and publishes them as `ResourceSlice`

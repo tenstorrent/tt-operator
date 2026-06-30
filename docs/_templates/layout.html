@@ -121,9 +121,13 @@
 </a>
 {%- endif %}
 
+{%- if cns_component is defined and cns_component %}
+<a href="https://docs.tenstorrent.com/cloud-native-support/">Cloud-Native Support</a>
+{%- else %}
 <a href="{{ pathto(_root_doc) }}">
     {{ project }}
 </a>
+{%- endif %}
 
 {%- endblock %}
 
@@ -143,13 +147,12 @@
 {%- if cns_component is defined and cns_component %}
 {%- set cns_items = [
   {"label": "TT-Operator",                  "code": "tt-operator",           "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-operator/"},
-  {"label": "Node Feature Discovery",       "code": "tt-operator",           "primary": false, "page": "components/node-feature-discovery", "url": "https://docs.tenstorrent.com/tt-operator/components/node-feature-discovery.html"},
+  {"label": "Node Feature Discovery",       "code": "tt-operator",           "primary": false, "page": "components/node-feature-discovery", "url": "https://docs.tenstorrent.com/tt-operator/latest/components/node-feature-discovery.html"},
   {"label": "Driver Manager",               "code": "tt-k8s-driver-manager", "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/"},
-  {"label": "Firmware",                     "code": "tt-k8s-driver-manager", "primary": false, "page": "firmware",                           "url": "https://docs.tenstorrent.com/tt-k8s-driver-manager/firmware.html"},
   {"label": "Telemetry",                    "code": "tt-telemetry",          "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-telemetry/"},
-  {"label": "Fabric Manager (beta)",        "code": "tt-fabric-manager",     "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-fabric-manager/"},
-  {"label": "Device Allocation (beta)",     "code": "tt-dra-driver",         "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-dra-driver/"},
-  {"label": "Multi-Node Scheduling (beta)", "code": "tt-operator",           "primary": false, "page": "components/multi-node",             "url": "https://docs.tenstorrent.com/tt-operator/components/multi-node.html"},
+  {"label": "Fabric Manager",               "code": "tt-fabric-manager",     "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-fabric-manager/"},
+  {"label": "Device Allocation",            "code": "tt-dra-driver",         "primary": true,  "page": "index",                              "url": "https://docs.tenstorrent.com/tt-dra-driver/"},
+  {"label": "Multi-Node Scheduling",        "code": "tt-operator",           "primary": false, "page": "components/multi-node",             "url": "https://docs.tenstorrent.com/tt-operator/latest/components/multi-node.html"},
 ] %}
 {%- set ns = namespace(subpage_active=false) %}
 {%- for c in cns_items %}
@@ -164,7 +167,6 @@
       | replace('toctree-l3', 'toctree-l4')
       | replace('toctree-l2', 'toctree-l3')
       | replace('toctree-l1', 'toctree-l2') %}
-<p class="caption" role="heading"><span class="caption-text">Cloud-Native Support</span></p>
 <ul>
 {%- for c in cns_items %}
 {%- set primary_current = (c.code == cns_component and c.primary and not ns.subpage_active) %}
