@@ -4,11 +4,6 @@ orphan: true
 
 # Multi-Node Scheduling (JobSet and PMIx)
 
-```{attention}
-**Beta feature.** Installed by default and usable for evaluation. Some
-capabilities are still maturing and may change.
-```
-
 Two components support multi-node jobs on Tenstorrent hardware:
 
 - **JobSet** ([kubernetes-sigs/jobset](https://github.com/kubernetes-sigs/jobset))
