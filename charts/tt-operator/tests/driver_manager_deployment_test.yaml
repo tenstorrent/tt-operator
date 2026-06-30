@@ -57,7 +57,7 @@ tests:
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: '^ghcr\.io/tenstorrent/tt-k8s-driver-manager-controller:'
+          pattern: '^ghcr\.io/tenstorrent/tt-k8s-driver-manager:'
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: IfNotPresent

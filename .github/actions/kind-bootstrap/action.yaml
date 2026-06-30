@@ -66,7 +66,9 @@ runs:
       run: |
         TAG=$(awk '/^  - name: tt-k8s-driver-manager$/{f=1; next} f && /version:/{gsub(/"/,""); print $2; exit}' charts/tt-operator/Chart.yaml)
         echo "Using tt-k8s-driver-manager image tag: ${TAG}"
-        for img in tt-k8s-driver-manager-controller tt-k8s-driver-manager-builder tt-k8s-driver-manager-flasher; do
+        # Controller image renamed to tt-k8s-driver-manager (no -controller suffix)
+        # in tt-k8s-driver-manager#52; builder/flasher names unchanged.
+        for img in tt-k8s-driver-manager tt-k8s-driver-manager-builder tt-k8s-driver-manager-flasher; do
           docker pull "ghcr.io/tenstorrent/${img}:${TAG}"
           kind load docker-image "ghcr.io/tenstorrent/${img}:${TAG}" --name "${{ inputs.cluster-name }}"
         done
