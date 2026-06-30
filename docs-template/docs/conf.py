@@ -87,6 +87,7 @@ _versions = [v.strip() for v in os.environ.get("TT_DOCS_VERSIONS", "").splitline
 html_baseurl = f"https://docs.tenstorrent.com/{project_code}/{_current_version}/"
 html_context = {
     "project_code": project_code,
+    "cns_component": project_code,
     "versions": _versions or [_current_version],
     "current_version": _current_version,
     "logo_link_url": os.environ.get("homepage", "https://docs.tenstorrent.com/"),
