@@ -12,4 +12,3 @@ page; follow a component to get started.
 | [Fabric Manager](https://docs.tenstorrent.com/tt-fabric-manager/) | Beta |
 | [Device Allocation](https://docs.tenstorrent.com/tt-dra-driver/) | Beta |
 | [Multi-Node Scheduling](multi-node.md) | Beta |
-
