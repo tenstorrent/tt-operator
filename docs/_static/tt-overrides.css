@@ -1,0 +1,16 @@
+/* tt-operator docs — local style overrides (loaded after the shared tt_theme.css). */
+
+/* Wrap wide tables (e.g. the Configuration reference Values table) instead of
+   forcing a horizontal scrollbar. Fixed layout + wrapping keeps every column on
+   one page; long defaults/keys break onto multiple lines rather than overflow. */
+.wy-table-responsive { overflow: visible; }
+.rst-content table.docutils {
+  width: 100%;
+  table-layout: fixed;
+}
+.rst-content table.docutils td,
+.rst-content table.docutils th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

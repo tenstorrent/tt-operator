@@ -1,9 +1,10 @@
 # Tenstorrent Operator
 
-`tt-operator` is the umbrella Helm chart that brings Tenstorrent devices under
+tt-operator is the umbrella Helm chart that brings Tenstorrent devices under
 Kubernetes management. It installs and coordinates the components that discover
-Tenstorrent devices, install and upgrade the kernel-mode driver (`tt-kmd`), flash
-firmware, export device telemetry, and make devices available to workloads.
+Tenstorrent devices, install and upgrade the kernel-mode driver
+([`tt-kmd`](https://github.com/tenstorrent/tt-kmd)), flash firmware, export device
+telemetry, and make devices available to workloads.
 
 This documentation is written for cluster administrators and platform operators
 who install and run tt-operator. It is organized around the tasks you perform,
@@ -11,7 +12,7 @@ from first install through continuous operations.
 
 ```{toctree}
 :maxdepth: 1
-:caption: Get started
+:caption: Get Started
 
 overview
 platform-support
@@ -22,7 +23,7 @@ installation
 
 ```{toctree}
 :maxdepth: 1
-:caption: Configure and operate
+:caption: Configure and Operate
 
 configuration
 components/index

@@ -1,4 +1,4 @@
-# Platform support
+# Platform Support
 
 ## Devices
 
@@ -18,12 +18,11 @@ every Tenstorrent device present on a node.
 - A Linux kernel for which `tt-kmd` can be built. The Driver Manager compiles the
   module against the node's kernel, so the matching kernel headers must be
   available.
-- Outbound access to `ghcr.io` for images, directly or via a mirror or pull
-  secret.
+- Outbound access to `ghcr.io` for images, directly or via a mirror.
 - [cert-manager](prerequisites.md) for the bundled PMIx webhook.
 
 ```{admonition} Reviewer note — confirm before v0.1
-:class: caution
+:class: danger
 The outbound `ghcr.io` access requirement above is subject to change before the
 v0.1 release. The published-artifacts registry and access model are still being
 finalized, so this line must be confirmed and updated before shipping. Do not

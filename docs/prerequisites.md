@@ -28,7 +28,7 @@ If you do not need `kubepmix`, you can skip cert-manager by disabling it:
 ## Registry access
 
 The component images are hosted on GitHub Container Registry (`ghcr.io`). Nodes
-must be able to pull from it, directly or through your mirror or pull secret.
+must be able to pull from it, directly or through your mirror.
 Pods stuck in `ImagePullBackOff` indicate a registry-access gap.
 See [Troubleshooting](troubleshooting.md).
 

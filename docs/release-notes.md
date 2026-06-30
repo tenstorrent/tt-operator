@@ -1,4 +1,4 @@
-# Release notes
+# Release Notes
 
 ## tt-operator v0.1
 
