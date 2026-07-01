@@ -1,8 +1,10 @@
 # Helm dependency archives — run: helm dependency build charts/tt-operator
 charts/**/charts/*.tgz
 
-# Local Claude Code permission allow-list — user-specific tooling state
-.claude/
+# Local Claude Code state is user-specific and ignored, but shared skills
+# (.claude/skills/) are committed so the whole team gets them.
+.claude/*
+!.claude/skills/
 
 # tt-operator docs (Sphinx) build artifacts
 docs/_build/
