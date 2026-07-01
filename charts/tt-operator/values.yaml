@@ -128,16 +128,6 @@ tt-telemetry:
     # -- (string) tt-telemetry image tag. Keep in lockstep with the tt-telemetry subchart version in Chart.yaml.
     tag: "0.1.1"
 
-  # Route topology resolution through the in-cluster TTFM controller.
-  # Address is deterministic given the umbrella's tt-fabric-manager
-  # fullnameOverride (`tt-fabric-manager`) + the chart's Service
-  # naming (`-controller`) + this release namespace. Sites with TTFM
-  # disabled (or no FSD staged) can keep the address — collectors that
-  # fail GetTopology fall back to monitoring all Ethernet channels.
-  config:
-    # -- (string) Address of the in-cluster TTFM controller used for topology resolution.
-    fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
-
   # Scope the collector DaemonSet to TT-equipped nodes AND let operators
   # drain it from a single node by flipping the deploy-gate label —
   # NVIDIA gpu-operator pattern (see `nvidia.com/gpu.deploy.dcgm-exporter`).

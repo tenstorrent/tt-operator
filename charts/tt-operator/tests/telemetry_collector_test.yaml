@@ -69,8 +69,10 @@ tests:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/acme/telemetry:contract-test
 
-  - it: wires the rendered ConfigMap in (umbrella sets config.fabric_manager_address)
+  - it: wires the rendered ConfigMap in when config is set
     template: charts/tt-telemetry/templates/daemonset.yaml
+    set:
+      tt-telemetry.config.fabric_manager_address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].args[1]
