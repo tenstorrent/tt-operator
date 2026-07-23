@@ -1,0 +1,63 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chart)"
+  ],
+  "timezone": "America/Los_Angeles",
+  "schedule": ["before 9am on monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 4,
+  "helmv3": {
+    "fileMatch": ["^charts/tt-operator/Chart\\.yaml$"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^charts/tt-operator/values\\.yaml$"],
+      "matchStrings": [
+        "# renovate: datasource=docker depName=(?<depName>\\S+)\\s+tag:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["helm"],
+      "matchPackagePrefixes": ["tt-"],
+      "matchPackagePatterns": [
+        "^tt-fabric-manager$",
+        "^tt-dra-driver$",
+        "^tt-telemetry$",
+        "^tt-k8s-driver-manager$"
+      ],
+      "commitMessageTopic": "{{depName}} subchart",
+      "commitMessageAction": "bump"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/tenstorrent/tt-telemetry"],
+      "matchDatasources": ["docker"],
+      "groupName": "tt-telemetry",
+      "groupSlug": "tt-telemetry"
+    },
+    {
+      "matchPackageNames": ["tt-telemetry"],
+      "matchDatasources": ["helm"],
+      "groupName": "tt-telemetry",
+      "groupSlug": "tt-telemetry"
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "helm dependency update charts/tt-operator",
+      "helm-docs --chart-search-root=charts"
+    ],
+    "fileFilters": [
+      "charts/tt-operator/Chart.lock",
+      "charts/tt-operator/charts/**",
+      "charts/tt-operator/README.md"
+    ],
+    "executionMode": "update"
+  }
+}

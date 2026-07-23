@@ -1,0 +1,82 @@
+name: renovate
+
+# Self-hosted Renovate: runs the Renovate CLI on a schedule (and on
+# manual dispatch) to open PRs bumping the umbrella chart's subchart
+# dependencies (tt-telemetry, tt-dra-driver, tt-fabric-manager,
+# tt-k8s-driver-manager) and any docker image tags annotated with a
+# `# renovate:` comment in values.yaml. Config lives at
+# .github/renovate.json.
+#
+# Auth:
+#   Uses the classic PAT stored as repo secret TT_OPERATOR_RENOVATE_PAT
+#   (scopes: `repo` + `read:packages`). PRs will attribute to the token
+#   owner.
+#
+# TODO(kluong): swap the PAT for a scoped GitHub App
+#   (`tt-renovate` at the tenstorrent org level) once the mechanism is
+#   proven. Cleaner attribution, no personal token lifecycle to manage,
+#   and the App can be scoped to just the umbrella + downstream chart
+#   repos. Swap = replace TT_OPERATOR_RENOVATE_PAT with
+#   actions/create-github-app-token wiring; nothing else changes.
+#
+# First run:
+#   Kick via the Actions tab (workflow_dispatch) to verify. Cron takes
+#   over after that.
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"   # Mondays 14:00 UTC (07:00 PT)
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Renovate log level"
+        required: false
+        default: "info"
+        type: choice
+        options: [debug, info, warn, error]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Install helm-docs
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source hack/tool-versions.env
+          v="${HELM_DOCS_VERSION#v}"
+          curl -sSL "https://github.com/norwoodj/helm-docs/releases/download/v${v}/helm-docs_${v}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /usr/local/bin helm-docs
+          helm-docs --version
+
+      - name: Renovate
+        uses: renovatebot/github-action@v40.3.7
+        with:
+          configurationFile: .github/renovate.json
+          token: ${{ secrets.TT_OPERATOR_RENOVATE_PAT }}
+        env:
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Postupgrade commands are shell-exec — allowlist them so a
+          # malicious PR can't smuggle a new command through the config.
+          RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: >-
+            ["^helm dependency update charts/tt-operator$",
+             "^helm-docs --chart-search-root=charts$"]
+          # Same token authenticates against ghcr.io for private chart /
+          # image tag enumeration (needs the `read:packages` scope).
+          RENOVATE_HOST_RULES: >-
+            [{"matchHost":"ghcr.io","hostType":"docker","username":"renovate","password":"${{ secrets.TT_OPERATOR_RENOVATE_PAT }}"}]
