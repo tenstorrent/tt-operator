@@ -75,6 +75,48 @@ tt-fabric-manager:
   # -- (string) Drop the release prefix so TTFM Service names render as tt-fabric-manager-{controller,agent}.
   fullnameOverride: tt-fabric-manager
 
+  # The TTFM controller is a cluster-scoped singleton: it aggregates the
+  # fabric topology reported by the agents and serves GetTopology. It never
+  # touches a local device, so it has no business occupying a Tenstorrent
+  # host — least of all a Galaxy, where the CPU/memory budget belongs to the
+  # workloads driving the cards. Steer it at an infra host instead.
+  #
+  # `preferred`, not `required`: many clusters are all-device with no
+  # dedicated infra hosts, and the controller still has to schedule there —
+  # a hard rule would leave it Pending forever. The two device signals are
+  # ANDed inside one preference term, so only a node carrying neither scores
+  # the weight. They mirror (inverted) the union the TTFM agent DaemonSet
+  # matches on: NFD's PCI-present label, and the manual
+  # tenstorrent.com/has-tt label applied by tt-ansible.
+  #
+  # Overrides coalesce the Helm way: a caller-supplied
+  # requiredDuringScheduling rule lands alongside this preference (hard
+  # placement, soft tiebreak). To hand scheduling back to the scheduler
+  # entirely, null the value out: --set tt-fabric-manager.controller.affinity=null
+  #
+  # Note: the same treatment is wanted for the tt-k8s-driver-manager
+  # controller, the tt-telemetry aggregator, and tt-dra-driver, but none of
+  # those subcharts exposes a settable affinity on its controller/aggregator
+  # workload today (tt-telemetry's aggregator hardcodes a *required*
+  # nodeAffinity built from deployment.nodeSelectorMatchExpressions;
+  # tt-k8s-driver-manager's manager Deployment has no scheduling knobs at
+  # all; tt-dra-driver ships only the per-node kubelet plugin DaemonSet,
+  # which must run on device hosts). Those need upstream chart knobs before
+  # the umbrella can set anything here.
+  controller:
+    # -- (object) TTFM controller affinity. Prefers nodes with no Tenstorrent device (i.e. infra hosts) so the controller stays off device hosts like Galaxy, while still scheduling in all-device clusters.
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: feature.node.kubernetes.io/pci-1200_1e52.present
+                  operator: DoesNotExist
+                - key: tenstorrent.com/has-tt
+                  operator: NotIn
+                  values: ["true"]
+
 # tt-dra-driver is a per-node kubelet plugin that publishes Tenstorrent
 # devices as DRA ResourceSlices. Opt-in. Before setting enabled: true,
 # the admin must satisfy these prerequisites:

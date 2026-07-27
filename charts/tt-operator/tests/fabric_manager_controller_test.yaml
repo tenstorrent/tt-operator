@@ -1,0 +1,95 @@
+suite: tt-fabric-manager controller scheduling (umbrella consumption)
+# Render contract for the TTFM controller Deployment's scheduling rules as the
+# umbrella ships them: a soft preference for nodes with no Tenstorrent device,
+# so the cluster-scoped controller stays off device hosts (Galaxy above all)
+# without ever going Pending in an all-device cluster. Every other subchart is
+# disabled to keep the render small and dodge tt-dra-driver's k8s>=1.33 floor.
+#
+# fullnameOverride: tt-fabric-manager (umbrella default) → the Deployment is
+# `tt-fabric-manager-controller`, not `tt-operator-tt-fabric-manager-…`.
+#
+# The template is selected per-test rather than suite-wide: the controller
+# Deployment checksums the controller ConfigMap via `include`, which only
+# resolves when the whole chart is rendered.
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-k8s-driver-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders exactly one controller Deployment, named per fullnameOverride
+    template: charts/tt-fabric-manager/templates/controller-deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: tt-fabric-manager-controller
+
+  - it: prefers nodes carrying no Tenstorrent device signal
+    template: charts/tt-fabric-manager/templates/controller-deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight
+          value: 100
+      - contains:
+          path: spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions
+          content:
+            key: feature.node.kubernetes.io/pci-1200_1e52.present
+            operator: DoesNotExist
+      - contains:
+          path: spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions
+          content:
+            key: tenstorrent.com/has-tt
+            operator: NotIn
+            values:
+              - "true"
+
+  - it: keeps the rule soft so all-device clusters still schedule the controller
+    template: charts/tt-fabric-manager/templates/controller-deployment.yaml
+    asserts:
+      - isNull:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+      - isNull:
+          path: spec.template.spec.nodeSelector
+
+  # Helm coalesces maps, so a caller-supplied requiredDuringScheduling rule
+  # lands *alongside* the shipped preference rather than replacing it — an
+  # admin pinning the controller to specific hosts gets both, which is the
+  # useful outcome (hard placement, soft tiebreak).
+  - it: an operator-supplied hard rule merges with the shipped preference
+    template: charts/tt-fabric-manager/templates/controller-deployment.yaml
+    set:
+      tt-fabric-manager.controller.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: ["infra-0"]
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
+          value: infra-0
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight
+          value: 100
+
+  # Escape hatch for admins who want the scheduler left alone: nulling the
+  # whole affinity value drops the pod's affinity block entirely (nulling just
+  # the nested preference key would leave an explicit `null` list behind).
+  - it: nulling controller.affinity drops the block, leaving the pod unconstrained
+    template: charts/tt-fabric-manager/templates/controller-deployment.yaml
+    set:
+      tt-fabric-manager.controller.affinity: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.affinity
