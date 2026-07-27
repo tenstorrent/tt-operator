@@ -17,7 +17,7 @@
       "customType": "regex",
       "fileMatch": ["^charts/tt-operator/values\\.yaml$"],
       "matchStrings": [
-        "# renovate: datasource=docker depName=(?<depName>\\S+)\\s+tag:\\s*\"(?<currentValue>[^\"]+)\""
+        "# renovate: datasource=docker depName=(?<depName>\\S+)\\n(?:[ \\t]*#[^\\n]*\\n)*[ \\t]*tag:\\s*\"(?<currentValue>[^\"]+)\""
       ],
       "datasourceTemplate": "docker"
     }
