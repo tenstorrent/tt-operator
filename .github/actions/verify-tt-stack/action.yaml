@@ -1,10 +1,11 @@
 name: Verify tt-fabric-manager + tt-telemetry
 description: |
   Now that the operator-driven kmd install has finished and /dev/tenstorrent is
-  back, confirm the per-node agents come up: the tt-fabric-manager agent and
-  tt-telemetry collector DaemonSets reach Ready, and tt-telemetry's /metrics
-  endpoint serves Prometheus exposition with tt_driver_initialized=1 (the signal
-  that the UMD round-trip to the device succeeded).
+  back, confirm the per-node agents come up: the tt-fabric-manager agent,
+  tt-telemetry collector, and tt-dra-driver kubelet plugin DaemonSets reach
+  Ready, and tt-telemetry's /metrics endpoint serves Prometheus exposition with
+  tt_driver_initialized=1 (the signal that the UMD round-trip to the device
+  succeeded).
 
 inputs:
   namespace:
@@ -21,6 +22,15 @@ runs:
         NS='${{ inputs.namespace }}'
         kubectl -n "$NS" rollout status ds/tt-fabric-manager-agent --timeout=4m
         kubectl -n "$NS" rollout status ds/tt-telemetry-daemonset --timeout=4m
+        # The DRA kubelet plugin also crash-loops before kmd is present. Wait for
+        # it to stabilise so its CrashLoopBackOff backoff cannot fire inside the
+        # verify-stack-stable observation window and produce a false positive.
+        draDS=$(kubectl -n "$NS" get daemonset \
+                  -l app.kubernetes.io/name=tt-dra-driver \
+                  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        if [ -n "$draDS" ]; then
+          kubectl -n "$NS" rollout status "ds/$draDS" --timeout=4m
+        fi
         kubectl -n "$NS" get pods -l app.kubernetes.io/name=tt-fabric-manager -o wide
         kubectl -n "$NS" get pods -l app=tt-telemetry -o wide
 
