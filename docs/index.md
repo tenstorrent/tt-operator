@@ -27,6 +27,7 @@ installation
 
 configuration
 components/index
+factory-system-descriptor
 continuous-operations
 troubleshooting
 ```
