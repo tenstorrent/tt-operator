@@ -48,11 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.15.4
-
       - name: Install helm-docs
         run: |
           set -euo pipefail
@@ -74,8 +69,7 @@ jobs:
           # Postupgrade commands are shell-exec — allowlist them so a
           # malicious PR can't smuggle a new command through the config.
           RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: >-
-            ["^helm dependency update charts/tt-operator$",
-             "^helm-docs --chart-search-root=charts$"]
+            ["^helm-docs --chart-search-root=charts$"]
           # Same token authenticates against ghcr.io for private chart /
           # image tag enumeration (needs the `read:packages` scope).
           RENOVATE_HOST_RULES: >-
