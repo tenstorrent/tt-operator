@@ -16,8 +16,8 @@ system descriptor, so you can attribute a metric to a specific tray and chip.
 Scrape the endpoint directly to check it:
 
 ```bash
-kubectl -n tt-operator-system port-forward <telemetry-collector-pod> 8080:8080
-curl -s localhost:8080/metrics | grep tt_driver_initialized
+kubectl -n tt-operator-system port-forward <telemetry-collector-pod> 18080:telemetry-http
+curl -s localhost:18080/metrics | grep tt_driver_initialized
 ```
 
 ## Prometheus integration

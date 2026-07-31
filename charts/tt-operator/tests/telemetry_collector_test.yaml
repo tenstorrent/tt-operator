@@ -138,7 +138,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            containerPort: 8080
+            containerPort: 18080
             name: telemetry-http
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path

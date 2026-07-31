@@ -73,8 +73,8 @@ tests:
           path: spec.ports
           content:
             name: telemetry-http
-            port: 8080
-            targetPort: 8080
+            port: 18080
+            targetPort: 18080
             nodePort: 30080
             protocol: TCP
 
@@ -102,7 +102,7 @@ tests:
           value: tt-telemetry-service
       - equal:
           path: spec.rules[0].http.paths[0].backend.service.port.number
-          value: 8080
+          value: 18080
 
   - it: declares a TLS block when network.tls.secretName is set
     template: charts/tt-telemetry/templates/ingress.yaml
