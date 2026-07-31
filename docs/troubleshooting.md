@@ -80,3 +80,8 @@ cannot bind. This is an environment limitation, not a fault.
 This is expected. The device briefly disappears while `tt-kmd` is reinstalled and
 the collector restarts. `/metrics` becomes healthy again once the driver is back.
 See [Telemetry](https://docs.tenstorrent.com/tt-telemetry/).
+
+## None of these match
+
+See [Get Support](support.md) for how to file a support request and what to
+include in it.

@@ -29,6 +29,7 @@ configuration
 components/index
 continuous-operations
 troubleshooting
+support
 ```
 
 ## Feature status
