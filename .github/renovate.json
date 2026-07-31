@@ -51,8 +51,7 @@
   ],
   "postUpgradeTasks": {
     "commands": [
-      "helm dependency update charts/tt-operator",
-      "helm-docs --chart-search-root=charts"
+      "/tmp/helm-docs --chart-search-root=charts"
     ],
     "fileFilters": [
       "charts/tt-operator/Chart.lock",
