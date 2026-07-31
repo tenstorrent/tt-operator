@@ -64,7 +64,7 @@ jobs:
           helm-docs --version
 
       - name: Renovate
-        uses: renovatebot/github-action@v40.3.7
+        uses: renovatebot/github-action@v40.3.6
         with:
           configurationFile: .github/renovate.json
           token: ${{ secrets.TT_OPERATOR_RENOVATE_PAT }}
