@@ -25,7 +25,7 @@ name: renovate
 
 on:
   schedule:
-    - cron: "0 14 * * 1"   # Mondays 14:00 UTC (07:00 PT)
+    - cron: "0 14 * * *"   # daily 14:00 UTC (07:00 PT / 06:00 PST)
   workflow_dispatch:
     inputs:
       logLevel:
