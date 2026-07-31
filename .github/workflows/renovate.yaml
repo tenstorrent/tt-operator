@@ -25,6 +25,9 @@ name: renovate
 
 on:
   schedule:
+    # This cron is the sole timing control — renovate.json deliberately has
+    # no `schedule`, so a manual dispatch opens PRs immediately instead of
+    # silently parking them under "Awaiting Schedule" on the dashboard.
     - cron: "0 14 * * *"   # daily 14:00 UTC (07:00 PT / 06:00 PST)
   workflow_dispatch:
     inputs:

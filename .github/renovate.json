@@ -7,7 +7,6 @@
   ],
   "timezone": "America/Los_Angeles",
   "gitAuthor": "Kenny Luong <kluong@tenstorrent.com>",
-  "schedule": ["before 9am"],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 4,
   "helmv3": {
@@ -29,26 +28,17 @@
   ],
   "packageRules": [
     {
-      "matchDatasources": ["helm"],
-      "commitMessageTopic": "{{depName}} subchart",
-      "commitMessageAction": "bump",
-      "matchPackageNames": [
-        "tt-{/,}**",
-        "/^tt-fabric-manager$/",
-        "/^tt-dra-driver$/",
-        "/^tt-telemetry$/",
-        "/^tt-k8s-driver-manager$/"
-      ]
-    },
-    {
-      "matchPackageNames": ["ghcr.io/tenstorrent/tt-telemetry"],
       "matchDatasources": ["docker"],
-      "groupName": "tt-telemetry",
-      "groupSlug": "tt-telemetry"
+      "matchPackageNames": ["ghcr.io/tenstorrent/helm/**"],
+      "commitMessageTopic": "{{depName}} subchart",
+      "commitMessageAction": "bump"
     },
     {
-      "matchPackageNames": ["tt-telemetry"],
-      "matchDatasources": ["helm"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/tenstorrent/helm/tt-telemetry",
+        "ghcr.io/tenstorrent/tt-telemetry"
+      ],
       "groupName": "tt-telemetry",
       "groupSlug": "tt-telemetry"
     }
