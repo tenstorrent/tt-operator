@@ -7,7 +7,7 @@
   ],
   "timezone": "America/Los_Angeles",
   "gitAuthor": "Kenny Luong <kluong@tenstorrent.com>",
-  "schedule": ["before 9am on monday"],
+  "schedule": ["before 9am"],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 4,
   "helmv3": {
