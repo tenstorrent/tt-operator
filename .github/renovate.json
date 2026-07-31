@@ -51,7 +51,7 @@
   ],
   "postUpgradeTasks": {
     "commands": [
-      "helm-docs --chart-search-root=charts"
+      "/tmp/helm-docs --chart-search-root=charts"
     ],
     "fileFilters": [
       "charts/tt-operator/Chart.lock",
