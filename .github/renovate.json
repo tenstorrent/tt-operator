@@ -11,12 +11,16 @@
   "prConcurrentLimit": 5,
   "prHourlyLimit": 4,
   "helmv3": {
-    "fileMatch": ["^charts/tt-operator/Chart\\.yaml$"]
+    "managerFilePatterns": [
+      "/^charts/tt-operator/Chart\\.yaml$/"
+    ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^charts/tt-operator/values\\.yaml$"],
+      "managerFilePatterns": [
+        "/^charts/tt-operator/values\\.yaml$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=docker depName=(?<depName>\\S+)\\n(?:[ \\t]*#[^\\n]*\\n)*[ \\t]*tag:\\s*\"(?<currentValue>[^\"]+)\""
       ],
@@ -26,15 +30,15 @@
   "packageRules": [
     {
       "matchDatasources": ["helm"],
-      "matchPackagePrefixes": ["tt-"],
-      "matchPackagePatterns": [
-        "^tt-fabric-manager$",
-        "^tt-dra-driver$",
-        "^tt-telemetry$",
-        "^tt-k8s-driver-manager$"
-      ],
       "commitMessageTopic": "{{depName}} subchart",
-      "commitMessageAction": "bump"
+      "commitMessageAction": "bump",
+      "matchPackageNames": [
+        "tt-{/,}**",
+        "/^tt-fabric-manager$/",
+        "/^tt-dra-driver$/",
+        "/^tt-telemetry$/",
+        "/^tt-k8s-driver-manager$/"
+      ]
     },
     {
       "matchPackageNames": ["ghcr.io/tenstorrent/tt-telemetry"],
