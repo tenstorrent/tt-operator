@@ -83,4 +83,5 @@ See [Telemetry](https://docs.tenstorrent.com/tt-telemetry/).
 
 ## None of these match
 
-See [Get Support](support.md) for where to report the problem and what to include.
+See [Get Support](support.md) for how to file a support request and what to
+include in it.
