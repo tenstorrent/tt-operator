@@ -15,7 +15,7 @@ dependencies:
     repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
     condition: node-feature-discovery.enabled
   - name: tt-k8s-driver-manager
-    version: "0.0.5"
+    version: "0.0.6"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-k8s-driver-manager.enabled
   # Tenstorrent Fabric Manager (TTFM): per-node agent + cluster controller
