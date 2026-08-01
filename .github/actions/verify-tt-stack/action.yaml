@@ -59,7 +59,9 @@ runs:
           pod=$(kubectl -n "$NS" get pods -l app=tt-telemetry \
                   -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
           [ -n "$pod" ] || return 1
-          kubectl -n "$NS" port-forward "pod/$pod" 18080:8080 >/tmp/pf.log 2>&1 &
+          # Target the port by name: the subchart's listen port is a value
+          # (network.telemetryHttpPort) and has changed across releases.
+          kubectl -n "$NS" port-forward "pod/$pod" 18080:telemetry-http >/tmp/pf.log 2>&1 &
           PF_PID=$!
           sleep 2
         }
@@ -79,7 +81,7 @@ runs:
             fi
           else
             # Connection refused usually means the collector just restarted and
-            # has not rebound :8080 yet — reconnect and keep waiting.
+            # has not rebound its listen port yet — reconnect and keep waiting.
             start_pf || true
           fi
           sleep 5
