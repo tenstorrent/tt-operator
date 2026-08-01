@@ -23,7 +23,7 @@ dependencies:
   # / non-Galaxy setups don't need it.
   # Source: github.com/tenstorrent/tt-fabric-manager
   - name: tt-fabric-manager
-    version: "0.2.28"
+    version: "0.2.29"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-fabric-manager.enabled
   # tt-dra-driver: Tenstorrent DRA (Dynamic Resource Allocation) driver.
