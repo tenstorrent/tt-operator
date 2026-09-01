@@ -1,0 +1,31 @@
+{{/*
+  Preflight gate (renders no objects): tt-dra-driver requires Kubernetes 1.33+.
+
+  DRA (Dynamic Resource Allocation) is gated in 1.33 and went GA in 1.34, so
+  the tt-dra-driver subchart's ResourceSlice publishing simply cannot work on
+  anything older. Helm's own Chart.yaml `kubeVersion` can't express this: it is
+  a single unconditional constraint for the whole umbrella, and DRA is opt-in
+  (`tt-dra-driver.enabled`) — a chart-wide 1.33 floor would lock out every
+  driver-manager-only install on an older cluster. Hence a conditional gate
+  here. Note that Helm does NOT enforce a subchart's own `kubeVersion`; only
+  the top-level chart's is checked, so tt-dra-driver's floor is invisible to
+  Helm and this is the only thing enforcing it.
+
+  Fails fast at render time (helm install/upgrade/template) with an actionable
+  message instead of leaving a kubelet plugin CrashLooping on an old cluster.
+
+  `index .Values "tt-dra-driver"` — not `.Values.tt-dra-driver` — because Go
+  template dot-traversal cannot parse hyphens in a key name (`bad character
+  U+002D`).
+
+  The `-0` in the constraint is load-bearing: sprig's semverCompare applies
+  strict SemVer precedence, where a prerelease sorts BELOW its release. Real
+  clusters report distro suffixes as prereleases — RKE2 `v1.34.0-rke2r1`, GKE
+  `v1.34.1-gke.1234` — and would fail a bare `>= 1.33.0`. (Helm's Chart.yaml
+  kubeVersion check normalizes those away; semverCompare does not.)
+*/}}
+{{- if index .Values "tt-dra-driver" "enabled" }}
+{{- if not (semverCompare ">= 1.33.0-0" .Capabilities.KubeVersion.Version) }}
+{{- fail (printf "tt-dra-driver requires Kubernetes >= 1.33 (cluster is %s). Upgrade the cluster, or install without DRA via --set tt-dra-driver.enabled=false" .Capabilities.KubeVersion.Version) }}
+{{- end }}
+{{- end }}

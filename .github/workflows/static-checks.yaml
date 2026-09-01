@@ -61,7 +61,12 @@ jobs:
         with:
           ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
       - name: helm lint --strict (also validates values.schema.json)
-        run: helm lint --strict charts/tt-operator
+        # --kube-version pins the capabilities lint renders with. Without it
+        # lint uses whatever the installed Helm defaults to (v1.20.0 on Helm 3,
+        # v1.35.0 on Helm 4), which decides whether the tt-dra-driver 1.33
+        # preflight gate fires — the same KUBE_VERSION the render matrix uses
+        # keeps this job's verdict independent of the Helm build on the runner.
+        run: helm lint --strict charts/tt-operator --kube-version "${KUBE_VERSION}"
 
   render-validate:
     runs-on: ubuntu-latest

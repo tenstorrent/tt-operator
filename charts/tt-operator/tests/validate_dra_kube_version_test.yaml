@@ -1,0 +1,55 @@
+suite: tt-dra-driver Kubernetes 1.33 floor (umbrella-owned preflight gate)
+# Guards templates/validate-dra-kube-version.yaml — the only thing enforcing
+# tt-dra-driver's k8s floor, since Helm ignores a subchart's own kubeVersion
+# and the umbrella deliberately has no chart-wide floor (DRA is opt-in).
+#
+# Every test pins `capabilities` explicitly rather than relying on the plugin
+# default (v1.20.0 in helm-unittest, unrelated to Helm's own default) so the
+# suite can't flip meaning when the pinned HELM_UNITTEST_VERSION is bumped.
+#
+# Filename sorts last on purpose: in this plugin version a suite's
+# `capabilities` block leaks into suites that run after it, so keeping this
+# one at the end of the alphabetical run keeps the other suites on defaults.
+templates:
+  - templates/validate-dra-kube-version.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+tests:
+  - it: blocks the install below the floor, naming the cluster version
+    capabilities:
+      majorVersion: 1
+      minorVersion: 32
+    asserts:
+      - failedTemplate:
+          errorMessage: "tt-dra-driver requires Kubernetes >= 1.33 (cluster is v1.32.0). Upgrade the cluster, or install without DRA via --set tt-dra-driver.enabled=false"
+
+  - it: renders nothing at exactly the floor
+    # The gate is a pure guard — on a supported cluster it must contribute no
+    # objects, so a passing gate is indistinguishable from its absence.
+    capabilities:
+      majorVersion: 1
+      minorVersion: 33
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders nothing above the floor (DRA GA)
+    capabilities:
+      majorVersion: 1
+      minorVersion: 34
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: stays out of the way on an old cluster when DRA is disabled
+    # The whole reason this is a conditional gate and not Chart.yaml
+    # kubeVersion: driver-manager-only installs on pre-1.33 keep working.
+    capabilities:
+      majorVersion: 1
+      minorVersion: 32
+    set:
+      tt-dra-driver.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
