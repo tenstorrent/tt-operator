@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Stage GHCR pull secret
 description: |
   Create the install namespace and a docker-registry pull secret for ghcr.io.

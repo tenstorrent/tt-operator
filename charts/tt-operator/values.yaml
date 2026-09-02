@@ -1,10 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # tt-operator is an umbrella chart. It installs:
 #   - node-feature-discovery (so Tenstorrent nodes get the
 #     feature.node.kubernetes.io/pci-1200_1e52.present label)
 #   - tt-k8s-driver-manager (controllers + CRDs + images for tt-kmd, firmware,
 #     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
 #   - tt-fabric-manager (cluster fabric/interconnect manager — see
-#     github.com/tenstorrent/tt-fabric-manager)
+#     docs.tenstorrent.com/tt-fabric-manager)
 #   - tt-dra-driver (DRA kubelet plugin publishing Tenstorrent devices
 #     as ResourceSlices — see github.com/tenstorrent/tt-dra-driver)
 #   - tt-telemetry (collects device telemetry, exports Prometheus metrics +
@@ -48,7 +51,7 @@ node-feature-discovery:
 # tt-k8s-driver-manager owns the controllers, CRDs, and per-node images that
 # manage tt-kmd installation, firmware flashing, and tt-smi userspace.
 # Set tt-k8s-driver-manager.enabled=false to opt out (e.g. if you only want
-# NFD labelling and intend to manage drivers some other way).
+# NFD labeling and intend to manage drivers some other way).
 tt-k8s-driver-manager:
   # -- (bool) Install tt-k8s-driver-manager (controllers, CRDs, and per-node images for tt-kmd, firmware flashing, and tt-smi). Disable to manage drivers yourself.
   enabled: true

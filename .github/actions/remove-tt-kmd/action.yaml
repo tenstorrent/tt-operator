@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Remove preloaded tt-kmd
 description: |
   Remove the tt-kmd module AND its DKMS install from the runner so the

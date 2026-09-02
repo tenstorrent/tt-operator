@@ -59,9 +59,8 @@ These are the mistakes that required a cleanup sweep — do not reintroduce them
   does `{include} _generated/chart-values.md`). Never hand-duplicate values and
   never post-process the README inside `conf.py`.
 - **No internal-only references.** Do not mention helm-docs internals, NVIDIA /
-  gpu-operator comparisons, or internal-only projects (ExaBox, ClosetBox,
-  tt-ansible, tt-orchestration). Write for an external reader with no access to
-  Tenstorrent-internal tooling.
+  gpu-operator comparisons, or internal-only projects. Write for an external
+  reader with no access to Tenstorrent-internal tooling.
 - **No source-repo or blob URLs in prose.** Link to the *published docs page*,
   not to a GitHub file/blob. Exception: linking a public upstream project (e.g.
   kubernetes-sigs/jobset) is fine.
@@ -157,7 +156,7 @@ through to the default menu untouched.
 
 ## Adopting docs for a new component
 
-Copy `docs/` and `.github/workflows/docs.yml` from `docs-template/`, edit the
+Copy `docs/` and `.github/workflows/docs.yaml` from `docs-template/`, edit the
 project settings in `conf.py`, add the component to the shared `cns_items`
 manifest in `tenstorrent.github.io` `shared/_templates/layout.html`, and enable
 GitHub Pages with the **GitHub Actions** source. Full steps:

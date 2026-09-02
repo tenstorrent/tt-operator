@@ -1,7 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Sphinx configuration for a Tenstorrent "Cloud-Native Support" docs page.
 #
 # Reusable template. To adopt it in a component repo, copy this `docs/` directory
-# and `.github/workflows/docs.yml`, then edit the two project settings below.
+# and `.github/workflows/docs.yaml`, then edit the two project settings below.
 # Pages are authored in MyST Markdown. The site builds standalone (your repo's
 # GitHub Pages, surfaced at docs.tenstorrent.com/<project_code>) and is also
 # consumable by the docs.tenstorrent.com umbrella, which overrides the theme with
@@ -21,7 +24,7 @@ chart_readme = os.environ.get("DOCS_CHART_README", "")
 
 project = project_name
 author = "Tenstorrent"
-copyright = "2026, Tenstorrent AI ULC"
+copyright = "2026, Tenstorrent USA, Inc."
 
 _docs_dir = Path(__file__).resolve().parent
 _repo_root = _docs_dir.parent

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 suite: tt-dra-driver Kubernetes 1.33 floor (umbrella-owned preflight gate)
 # Guards templates/validate-dra-kube-version.yaml — the only thing enforcing
 # tt-dra-driver's k8s floor, since Helm ignores a subchart's own kubeVersion

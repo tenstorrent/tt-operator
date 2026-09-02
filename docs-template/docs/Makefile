@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Minimal Sphinx Makefile for the component documentation.
 # `make html` builds; `make serve` previews locally. Warnings are surfaced but
 # do not fail the build. Pass `SPHINXOPTS="-W --keep-going"` for a strict build.

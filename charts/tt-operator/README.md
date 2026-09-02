@@ -1,12 +1,12 @@
 # tt-operator
 
-Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labelling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, tt-fabric-manager for cluster fabric/interconnect management, tt-dra-driver for DRA-based device scheduling, tt-telemetry for device metrics export, jobset for multi-job workloads, and kubepmix for PMIx-aware MPI scheduling.
+Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labeling, tt-k8s-driver-manager for tt-kmd, firmware, and tt-smi lifecycle, tt-fabric-manager for cluster fabric/interconnect management, tt-dra-driver for DRA-based device scheduling, tt-telemetry for device metrics export, jobset for multi-job workloads, and kubepmix for PMIx-aware MPI scheduling.
 
 <!--
   GENERATED FILE — do not edit by hand.
   Produced by helm-docs from Chart.yaml and values.yaml. To update: edit the
   `# --` annotations in values.yaml (or the dependencies in Chart.yaml), then
-  run `make docs` and commit the result. CI (validate.yaml → docs-coherence)
+  run `make docs` and commit the result. CI (static-checks.yaml → docs-coherence)
   fails if this file is stale. Note: because the Requirements table below lists
   subchart versions, bumping any dependency in Chart.yaml requires a `make docs`
   refresh too. Install / upgrade / dev docs live in the repo-root README.md,

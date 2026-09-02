@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Integration failure diagnostics
 description: |
   Best-effort cluster + host dump for the RKE2 integration job. Call with

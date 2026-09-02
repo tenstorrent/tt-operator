@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Minimal Sphinx Makefile for the tt-operator documentation.
 # `make html` mirrors CI (warnings are errors). `make serve` previews locally.
 SPHINXOPTS  ?= -W --keep-going

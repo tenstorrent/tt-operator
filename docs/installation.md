@@ -69,7 +69,7 @@ combined image reference key. To pin a build of the Driver Manager:
 ```bash
 helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
   --namespace tt-operator-system \
-  --set tt-k8s-driver-manager.controller.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager-controller \
+  --set tt-k8s-driver-manager.controller.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager \
   --set tt-k8s-driver-manager.controller.image.tag=<tag> \
   --set tt-k8s-driver-manager.driver.image.repository=ghcr.io/tenstorrent/tt-k8s-driver-manager-builder \
   --set tt-k8s-driver-manager.driver.image.tag=<tag> \

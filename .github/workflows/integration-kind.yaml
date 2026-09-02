@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: integration-kind
 
 # Tier-1 (kind, every PR — no Tenstorrent hardware) live-install integration

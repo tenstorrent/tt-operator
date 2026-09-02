@@ -1,0 +1,47 @@
+tt-operator
+Copyright 2026 Tenstorrent USA, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+================================================================================
+
+Third-Party Dependencies:
+
+This repository contains no third-party source code. The umbrella Helm chart
+declares the following chart dependencies, which are downloaded at
+`helm dependency build` time and packaged into the published chart:
+
+  node-feature-discovery (kubernetes-sigs/node-feature-discovery)  Apache-2.0
+    Copyright The Kubernetes Authors
+  jobset (kubernetes-sigs/jobset)                                   Apache-2.0
+    Copyright The Kubernetes Authors
+  tt-k8s-driver-manager (tenstorrent/tt-k8s-driver-manager)         Apache-2.0
+  tt-fabric-manager (Tenstorrent Fabric Manager)                    Apache-2.0
+  tt-dra-driver (tenstorrent/tt-dra-driver)                         Apache-2.0
+  tt-telemetry (tenstorrent/tt-telemetry)                           Apache-2.0
+
+The chart's kubepmix template deploys the container image
+ghcr.io/kubepmix/kubepmix (https://github.com/kubepmix/kubepmix), Apache-2.0,
+Copyright 2026 Jacek Jakub Lakis. No kubepmix source is included here.
+
+Documentation build dependencies (docs/requirements.txt), used only to build
+the documentation site: sphinx (BSD-2-Clause), myst-parser (MIT),
+sphinx-rtd-theme (MIT), sphinxcontrib-mermaid (BSD), sphinx-copybutton (MIT),
+sphinx-togglebutton (MIT). The docs theme under docs/_static and
+docs/_templates is Tenstorrent's shared documentation theme and extends the
+sphinx-rtd-theme layout (MIT).
+
+Documentation and images under docs/ and docs-template/ are licensed under the
+Creative Commons Attribution 4.0 International License; see LICENSE-DOCS. The
+documentation site loads its web fonts from https://docs.tenstorrent.com at
+render time; no font files are distributed with this repository.
