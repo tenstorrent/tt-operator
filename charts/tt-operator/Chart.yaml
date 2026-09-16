@@ -15,7 +15,7 @@ dependencies:
     repository: "https://kubernetes-sigs.github.io/node-feature-discovery/charts"
     condition: node-feature-discovery.enabled
   - name: tt-k8s-driver-manager
-    version: "0.0.6"
+    version: "0.0.7"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-k8s-driver-manager.enabled
   # Tenstorrent Fabric Manager (TTFM): per-node agent + cluster controller
@@ -23,7 +23,7 @@ dependencies:
   # / non-Galaxy setups don't need it.
   # Source: github.com/tenstorrent/tt-fabric-manager
   - name: tt-fabric-manager
-    version: "0.2.29"
+    version: "0.2.30"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-fabric-manager.enabled
   # tt-dra-driver: Tenstorrent DRA (Dynamic Resource Allocation) driver.
@@ -34,7 +34,7 @@ dependencies:
   # kubelet (DRA went GA in 1.34; gated in 1.33).
   # Source: github.com/tenstorrent/tt-dra-driver
   - name: tt-dra-driver
-    version: "0.0.48"
+    version: "0.0.57"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-dra-driver.enabled
   # tt-telemetry: collects Tenstorrent device telemetry and exposes it via
