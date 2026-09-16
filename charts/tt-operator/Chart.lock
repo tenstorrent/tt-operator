@@ -10,12 +10,12 @@ dependencies:
   version: 0.2.30
 - name: tt-dra-driver
   repository: oci://ghcr.io/tenstorrent/helm
-  version: 0.0.50
+  version: 0.0.59
 - name: tt-telemetry
   repository: oci://ghcr.io/tenstorrent/helm
   version: 0.2.0
 - name: jobset
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
-digest: sha256:afb7a01b35079ba01eae53b0c5a16c666b921009500dba4a769405687ffe9935
-generated: "2026-09-16T10:18:16.330111-05:00"
+digest: sha256:34b20c8b14fdbe4d3b775c20a7593e2ad33690e9cd755b8be602fafb0826135d
+generated: "2026-09-16T10:24:29.985284-05:00"
