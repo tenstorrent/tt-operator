@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Build the versioned tt-operator docs site for GitHub Pages.
 #
 # Publishes the current checkout as `latest/` plus every released tag (vX.Y.Z

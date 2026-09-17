@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Helm upgrade verify
 description: |
   Day-2 check: `helm upgrade` the already-installed umbrella release and confirm

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # tt-operator is an umbrella chart that installs node-feature-discovery and
 # tt-k8s-driver-manager (the latter ships its own controller + images).
 #
@@ -6,7 +9,7 @@
 #   make helm-install   # install the umbrella into a cluster
 
 # Pinned tool versions (helm-docs, helm-unittest), shared with
-# .github/workflows/validate.yaml. Single source of truth — bump there.
+# .github/workflows/static-checks.yaml. Single source of truth — bump there.
 # Command-line overrides (e.g. `make docs HELM_DOCS_VERSION=v1.x`) still win.
 include hack/tool-versions.env
 
@@ -64,7 +67,7 @@ docs-check: docs
 
 .PHONY: unittest
 unittest: helm-deps
-	# Local mirror of the validate.yaml helm-unittest job; CI is the routine
+	# Local mirror of the static-checks.yaml helm-unittest job; CI is the routine
 	# runner. Not part of the no-auth local flow: helm-deps pulls the OCI
 	# subchart, so this needs a prior `helm registry login ghcr.io`.
 	# --verify=false: recent Helm verifies plugin provenance by default, which

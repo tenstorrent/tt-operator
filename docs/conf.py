@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Sphinx configuration for the tt-operator documentation.
 #
 # Authored in MyST Markdown. Builds standalone (this repo's GitHub Pages, which
@@ -9,7 +12,7 @@ import shutil
 from pathlib import Path
 
 project = "TT-Operator"
-copyright = "2026, Tenstorrent AI ULC"
+copyright = "2026, Tenstorrent USA, Inc."
 author = "Tenstorrent"
 
 _docs_dir = Path(__file__).resolve().parent

@@ -1,5 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Pinned lint hooks shared by local git commits, `make lint`, and CI
-# (validate.yaml → lint-tools runs `pre-commit run --all-files`). Bumping a
+# (static-checks.yaml → lint-tools runs `pre-commit run --all-files`). Bumping a
 # `rev` here updates local and CI together — one source of truth.
 #
 # One-time local setup:

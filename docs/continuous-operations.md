@@ -12,18 +12,17 @@ helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
 Enabled controller Deployments roll to the new version and existing custom
 resource definitions are preserved.
 
-### Re-applying vendored CRDs
+### Re-applying subchart CRDs
 
-Some subcharts ship their CRDs out of band from the Helm release, currently
-JobSet, and the umbrella chart vendors those CRDs. Helm applies them on install
-only. `helm upgrade` deliberately skips them, the Helm 3 convention that prevents
-a chart from silently changing CRD schemas under live resources. When upgrading
-to a chart version that bumps a subchart owning vendored CRDs, re-apply them
-yourself:
+Subcharts ship their CRDs in their `crds/` directories. Helm applies them on
+install only. `helm upgrade` deliberately skips them, the Helm 3 convention that
+prevents a chart from silently changing CRD schemas under live resources. When
+upgrading to a chart version that bumps a subchart whose CRD schema changed,
+re-apply that subchart's CRDs yourself:
 
 ```bash
 helm pull oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> --untar -d /tmp/tt-operator-pull
-kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/crds/
+kubectl apply --server-side --force-conflicts -f /tmp/tt-operator-pull/tt-operator/charts/<subchart>/crds/
 helm upgrade tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator --version <new> \
   -n tt-operator-system --reuse-values
 ```

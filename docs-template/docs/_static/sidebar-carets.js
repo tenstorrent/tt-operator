@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 /*
  * Cloud-Native Support sidebar enhancements for the curated component sites
  * (which do not ship the shared tt-search.js). Two behaviours:

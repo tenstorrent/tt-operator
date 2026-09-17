@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Set up RKE2 single-node cluster
 description: |
   Installs RKE2 server with DRA feature gate, waits for the apiserver to

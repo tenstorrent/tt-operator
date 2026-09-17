@@ -20,12 +20,12 @@ docs/
   index.md             # starter page — replace with your docs
   _static/             # vendored Tenstorrent theme (fallback when standalone)
   _templates/          # versions widget
-.github/workflows/docs.yml   # build gate (PRs) + versioned Pages deploy
+.github/workflows/docs.yaml   # build gate (PRs) + versioned Pages deploy
 ```
 
 ## Adopt it
 
-1. Copy `docs/` and `.github/workflows/docs.yml` into your repo.
+1. Copy `docs/` and `.github/workflows/docs.yaml` into your repo.
 2. Edit the project settings at the top of `docs/conf.py`:
    - `project_name` — the display name (for example, `Driver Manager`).
    - `project_code` — the URL slug, usually the repo name.

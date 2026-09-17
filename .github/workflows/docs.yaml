@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: docs
 
 # Build the Sphinx/MyST documentation as a gate on every change, and deploy the
@@ -18,7 +21,7 @@ on:
     paths:
       - "docs/**"
       - "charts/tt-operator/README.md"
-      - ".github/workflows/docs.yml"
+      - ".github/workflows/docs.yaml"
 
 permissions:
   contents: read

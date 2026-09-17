@@ -1,33 +1,36 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 @font-face {
   font-family: "Degular";
-  src: url("./fonts/DegularText-Medium.woff") format("woff"),
-    url("./fonts/DegularText-Medium.woff2") format("woff2");
+  src: url("https://docs.tenstorrent.com/_static/fonts/DegularText-Medium.woff") format("woff"),
+    url("https://docs.tenstorrent.com/_static/fonts/DegularText-Medium.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Degular";
-  src: url("./fonts/DegularText-Bold.woff") format("woff"),
-    url("./fonts/DegularText-Bold.woff2") format("woff2");
+  src: url("https://docs.tenstorrent.com/_static/fonts/DegularText-Bold.woff") format("woff"),
+    url("https://docs.tenstorrent.com/_static/fonts/DegularText-Bold.woff2") format("woff2");
   font-weight: bold;
 }
 
 @font-face {
   font-family: "Degular";
-  src: url("./fonts/DegularText-MediumItalic.woff") format("woff"),
-    url("./fonts/DegularText-MediumItalic.woff2") format("woff2");
+  src: url("https://docs.tenstorrent.com/_static/fonts/DegularText-MediumItalic.woff") format("woff"),
+    url("https://docs.tenstorrent.com/_static/fonts/DegularText-MediumItalic.woff2") format("woff2");
   font-style: italic;
 }
 
 @font-face {
   font-family: "DegularDisplay";
-  src: url("./fonts/DegularDisplay-Light.woff") format("woff"),
-    url("./fonts/DegularDisplay-Light.woff2") format("woff2");
+  src: url("https://docs.tenstorrent.com/_static/fonts/DegularDisplay-Light.woff") format("woff"),
+    url("https://docs.tenstorrent.com/_static/fonts/DegularDisplay-Light.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "RMMono";
-  src: url("./fonts/RMMono-Regular.woff") format("woff"),
-    url("./fonts/RMMono-Regular.woff2") format("woff2");
+  src: url("https://docs.tenstorrent.com/_static/fonts/RMMono-Regular.woff") format("woff"),
+    url("https://docs.tenstorrent.com/_static/fonts/RMMono-Regular.woff2") format("woff2");
 }
 
 :root {

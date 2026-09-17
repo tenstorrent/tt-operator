@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: tt-operator-dev

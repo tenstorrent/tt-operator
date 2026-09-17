@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Generate RKE2 install values
 description: |
   Write the umbrella values file for the RKE2 hardware integration job and

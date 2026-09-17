@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: TT runner preflight
 description: |
   Confirm a Tenstorrent runner VM is what we expect before sinking time into

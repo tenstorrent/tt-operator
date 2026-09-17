@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Driver upgrade via TenstorrentDriverPolicy (US-B2 + US-B4)
 description: |
   Real in-place driver upgrade on hardware. With the policy already at FROM (the

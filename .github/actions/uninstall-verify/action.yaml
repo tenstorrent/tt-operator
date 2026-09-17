@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Helm uninstall verify
 description: |
   Day-2 teardown check: remove the policy CRs (so the controller can garbage-

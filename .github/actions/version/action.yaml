@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: 'Get version'
 description: |
   Derive the chart version for this build. Mirrors the scheme used by

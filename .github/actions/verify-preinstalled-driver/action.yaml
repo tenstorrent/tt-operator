@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: 'Verify pre-installed-driver mode (US-A4)'
 description: |
   Model an admin who manages tt-kmd externally (tt-k8s-driver-manager.enabled=

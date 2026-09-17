@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # actionlint config. Declares the custom self-hosted runner labels used by the
 # hardware integration job (integration-rke2.yaml) so actionlint doesn't flag
 # them as unknown `runs-on` labels.

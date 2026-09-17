@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: Verify stack stability (no new restarts)
 description: |
   Final stability gate, run after the stack is up (post verify-tt-stack). The

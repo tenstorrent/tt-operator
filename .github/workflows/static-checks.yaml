@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 name: static-checks
 
 # Static (no-cluster) checks for the chart. Catches problems that `helm lint`
@@ -9,7 +12,6 @@ name: static-checks
 #                          permutations and validate every rendered manifest
 #                          with kubeconform against the k8s + CRD schemas.
 #   - chart-lock-coherence: Chart.lock stays in sync with Chart.yaml.
-#   - crd-coherence:       vendored CRDs match the pinned subchart versions.
 #
 # AUTH NOTE: jobs that build chart deps pull the tt-k8s-driver-manager OCI
 # subchart, which tt-operator's GITHUB_TOKEN can't read cross-repo yet — they
