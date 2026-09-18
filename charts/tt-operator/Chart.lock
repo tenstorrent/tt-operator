@@ -1,7 +1,7 @@
 dependencies:
 - name: node-feature-discovery
   repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
-  version: 0.18.3
+  version: 0.19.0
 - name: tt-k8s-driver-manager
   repository: oci://ghcr.io/tenstorrent/helm
   version: 0.0.7
@@ -17,5 +17,5 @@ dependencies:
 - name: jobset
   repository: oci://registry.k8s.io/jobset/charts
   version: 0.12.0
-digest: sha256:34b20c8b14fdbe4d3b775c20a7593e2ad33690e9cd755b8be602fafb0826135d
-generated: "2026-09-16T10:24:29.985284-05:00"
+digest: sha256:7741f9099e717fd3797775133ecc88093f2ceb6d7d2986b6c047f9210f3edaac
+generated: "2026-09-18T14:05:07.575640215Z"
