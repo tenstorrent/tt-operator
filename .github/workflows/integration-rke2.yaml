@@ -57,7 +57,7 @@ jobs:
     # then restore to the preloaded version) on top of the initial install build.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Pre-flight — runner introspection
         id: preflight

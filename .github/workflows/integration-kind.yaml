@@ -42,7 +42,7 @@ jobs:
   driver-manager-kind:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
 
       # Creates kind (tt-integration), side-loads the driver-manager images at
@@ -259,7 +259,7 @@ jobs:
             absent: "driver-manager fabric-manager dra jobset kubepmix"
             crd-absent: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
       - name: Cluster + deps (cert-manager=${{ matrix.cert-manager }})
         uses: ./.github/actions/kind-cluster
@@ -293,7 +293,7 @@ jobs:
     # present. 1.34 node to satisfy subchart kubeVersion floors.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
       - name: Cluster + deps (no cert-manager yet)
         uses: ./.github/actions/kind-cluster
@@ -318,7 +318,7 @@ jobs:
     # images. Asserts the release deploys and the controller object is created.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
       - name: Cluster (GHCR login, no dep build)
         uses: ./.github/actions/kind-cluster
