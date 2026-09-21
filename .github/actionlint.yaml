@@ -6,5 +6,5 @@
 # them as unknown `runs-on` labels.
 self-hosted-runner:
   labels:
-    - tt-ubuntu-2204-n150-stable
-    - tt-ubuntu-2204-bh-loudbox-viommu-stable
+    - tt-ubuntu-2204-p150b-stable
+    - tt-ubuntu-2204-n300-llmbox-viommu-stable

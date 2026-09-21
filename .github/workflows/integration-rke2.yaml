@@ -8,8 +8,8 @@ name: integration-rke2
 # up a single-node RKE2 cluster, installs the umbrella, and drives the operator
 # through a real tt-kmd reinstall, then verifies fabric-manager + telemetry +
 # DRA. The VM is destroyed at job end, so each run gets a fresh kernel +
-# /dev/tenstorrent. Matrixed across the n150 (Wormhole) and bh-loudbox
-# (Blackhole, vIOMMU) runner pools — same code path, different hardware.
+# /dev/tenstorrent. Matrixed across the p150b (Blackhole) and n300-llmbox
+# (Wormhole, vIOMMU) runner pools — same code path, different hardware.
 #
 # Companion to integration-kind.yaml (which fakes the NFD label and only
 # reaches image-pull); this is the real-hardware tier.
@@ -49,8 +49,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - tt-ubuntu-2204-n150-stable
-          - tt-ubuntu-2204-bh-loudbox-viommu-stable
+          - tt-ubuntu-2204-p150b-stable
+          - tt-ubuntu-2204-n300-llmbox-viommu-stable
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.runner }}
     # Bumped from 30: the driver-upgrade phase adds two more DKMS builds (to 2.8.0,
