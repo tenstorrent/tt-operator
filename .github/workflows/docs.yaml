@@ -75,7 +75,7 @@ jobs:
       - name: Build all versions
         run: bash docs/build-versions.sh output
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
