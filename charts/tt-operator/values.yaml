@@ -186,3 +186,13 @@ kubepmix:
   enabled: true
   # -- (string) Namespace for the kubepmix webhook resources. Defaults to a dedicated kube-pmix namespace; set to your release namespace to consolidate.
   namespace: kube-pmix
+  # Scheduling for the kube-pmix Deployment (PMIx server + mutating webhook).
+  # kubepmix holds rank assignments in process memory, so a restart during a
+  # JobSet bring-up strands ranks; keep it on infra nodes, off accelerator
+  # hosts that get power-cycled. Same knobs as tt-fabric-manager.controller.
+  # -- (object) kube-pmix Deployment nodeSelector. Empty = any node.
+  nodeSelector: {}
+  # -- (object) kube-pmix Deployment affinity. Empty = none.
+  affinity: {}
+  # -- (list) kube-pmix Deployment tolerations. Empty = none.
+  tolerations: []

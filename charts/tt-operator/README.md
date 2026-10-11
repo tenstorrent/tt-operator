@@ -29,8 +29,11 @@ Umbrella chart for Tenstorrent on Kubernetes. Installs NFD for device labeling, 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | jobset.enabled | bool | `true` | Install JobSet (kubernetes-sigs/jobset) for grouped multi-node Job lifecycle. No external prereqs. |
+| kubepmix.affinity | object | `{}` | kube-pmix Deployment affinity. Empty = none. |
 | kubepmix.enabled | bool | `true` | Install the kubepmix mutating webhook (injects PMIx env into multi-node training Jobs). Requires cert-manager pre-installed. |
 | kubepmix.namespace | string | `"kube-pmix"` | Namespace for the kubepmix webhook resources. Defaults to a dedicated kube-pmix namespace; set to your release namespace to consolidate. |
+| kubepmix.nodeSelector | object | `{}` | kube-pmix Deployment nodeSelector. Empty = any node. |
+| kubepmix.tolerations | list | `[]` | kube-pmix Deployment tolerations. Empty = none. |
 | node-feature-discovery.enabled | bool | `true` | Install node-feature-discovery so Tenstorrent nodes get the feature.node.kubernetes.io/pci-1200_1e52.present label. |
 | node-feature-discovery.worker.config.core.featureSources | list | `["pci"]` | NFD feature sources to enable. Restricted to PCI — the only source needed to detect Tenstorrent devices. |
 | node-feature-discovery.worker.config.core.labelSources | list | `["pci"]` | NFD label sources to enable. Restricted to PCI to avoid the CPU/memory cost and label clutter of the full source set. |

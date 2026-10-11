@@ -4,8 +4,9 @@
 {{- if .Values.kubepmix.enabled }}
 {{- $ns := default "kube-pmix" .Values.kubepmix.namespace }}
 # kubepmix: mutating webhook that injects PMIx env into multi-node training
-# Jobs. The only configurable knobs are `.Values.kubepmix.enabled` and
-# `.Values.kubepmix.namespace`. Prereq: cert-manager must be pre-installed
+# Jobs. The configurable knobs are `.Values.kubepmix.enabled`,
+# `.Values.kubepmix.namespace` and the Deployment's scheduling
+# (`nodeSelector`, `affinity`, `tolerations`). Prereq: cert-manager must be pre-installed
 # on the cluster (the umbrella does not ship it); the Issuer and Certificate
 # resources below depend on it.
 {{- if ne $ns .Release.Namespace }}
@@ -60,6 +61,23 @@ spec:
         app: kube-pmix
     spec:
       serviceAccountName: kube-pmix
+      # Scheduling knobs. kubepmix keeps rank assignments in process memory
+      # (keyed by JobSet UID + restart attempt), so a restart mid-bring-up
+      # strands ranks ("Rank N already taken"); pin it to infra nodes so
+      # accelerator-host power cycles do not take it down. Same knobs as the
+      # tt-fabric-manager controller; empty by default = unchanged behaviour.
+      {{- with .Values.kubepmix.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubepmix.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubepmix.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: kube-pmix
           image: ghcr.io/kubepmix/kubepmix:0.0.12

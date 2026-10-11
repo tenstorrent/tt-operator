@@ -84,3 +84,55 @@ tests:
         documentSelector:
           path: kind
           value: MutatingWebhookConfiguration
+
+  - it: schedules anywhere by default (no nodeSelector, affinity or tolerations)
+    asserts:
+      - isNull:
+          path: spec.template.spec.nodeSelector
+        documentSelector:
+          path: kind
+          value: Deployment
+      - isNull:
+          path: spec.template.spec.affinity
+        documentSelector:
+          path: kind
+          value: Deployment
+      - isNull:
+          path: spec.template.spec.tolerations
+        documentSelector:
+          path: kind
+          value: Deployment
+
+  - it: forwards nodeSelector, affinity and tolerations to the Deployment
+    set:
+      kubepmix.nodeSelector:
+        tenstorrent.com/longhorn-node: "true"
+      kubepmix.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: feature.node.kubernetes.io/pci-1200_1e52.present
+                    operator: DoesNotExist
+      kubepmix.tolerations:
+        - key: infra
+          operator: Exists
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["tenstorrent.com/longhorn-node"]
+          value: "true"
+        documentSelector:
+          path: kind
+          value: Deployment
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: feature.node.kubernetes.io/pci-1200_1e52.present
+        documentSelector:
+          path: kind
+          value: Deployment
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: infra
+        documentSelector:
+          path: kind
+          value: Deployment
