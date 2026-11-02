@@ -1,0 +1,31 @@
+suite: node-feature-discovery worker config (umbrella overrides)
+# The umbrella narrows NFD to the `pci` and `local` sources. `pci` yields the
+# pci-1200_1e52.present label every operand keys on; `local` is what turns
+# tt-feature-discovery's feature file into tenstorrent.com/* labels. Losing
+# either silently breaks a downstream consumer, so pin both here.
+templates:
+  - charts/node-feature-discovery/templates/nfd-worker-conf.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  tt-feature-discovery.enabled: false
+  tt-k8s-driver-manager.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: enables exactly the pci and local feature/label sources
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["nfd-worker.conf"]
+          pattern: 'featureSources:\n\s*- pci\n\s*- local\b'
+      - matchRegex:
+          path: data["nfd-worker.conf"]
+          pattern: 'labelSources:\n\s*- pci\n\s*- local\b'

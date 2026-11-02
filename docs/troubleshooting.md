@@ -48,6 +48,20 @@ If a node with a device is missing, confirm the device is visible on the host
 with `lspci | grep -i tenstorrent`, and that the NFD worker pod is Running on
 that node. Labeling is asynchronous, so allow a short interval after install.
 
+## No tenstorrent.com labels on a node
+
+```bash
+kubectl get nodes -l tenstorrent.com/device.present=true
+```
+
+If NFD's PCI label is present but the `tenstorrent.com/*` labels are not, check
+that the `tt-feature-discovery` pod is Running on the node and that NFD's
+`local` source is still enabled in
+`node-feature-discovery.worker.config.core.featureSources` and `labelSources`.
+If only the `asic.*`, `datacenter.*`, and `fabric.*` labels are missing, the
+Fabric Manager does not know the node yet; the accelerator labels do not depend
+on it. See [Feature Discovery](components/feature-discovery.md).
+
 ## No /dev/tenstorrent devices on a node
 
 The driver is not loaded. Check, in order:

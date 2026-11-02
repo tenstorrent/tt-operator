@@ -20,9 +20,13 @@ feature.node.kubernetes.io/pci-1200_1e52.present=true
 ```
 
 to every node that has a Tenstorrent device (PCI vendor `1e52`). The chart
-restricts NFD to the PCI source only, so it does not add the full set of CPU,
-kernel, and system labels. This keeps node labels focused and the footprint
-small.
+restricts NFD to the `pci` and `local` sources, so it does not add the full set
+of CPU, kernel, and system labels. This keeps node labels focused and the
+footprint small.
+
+The `local` source reads the feature file that
+[Feature Discovery](feature-discovery.md) writes on each node and publishes it
+as `tenstorrent.com/*` labels describing the hardware.
 
 ## Verify
 
@@ -43,7 +47,8 @@ cluster-wide, set:
 --set node-feature-discovery.enabled=false
 ```
 
-The feature and label sources are restricted to `pci` via
+The feature and label sources are restricted to `pci` and `local` via
 `node-feature-discovery.worker.config.core.featureSources` and `labelSources`.
+Keep `local` enabled if you use Feature Discovery.
 See the [Configuration reference](../configuration.md) for the full set of NFD
 values.

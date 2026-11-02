@@ -82,6 +82,7 @@ jobs:
           # Only NFD + the driver manager.
           - name: driver-only
             args: >-
+              --set tt-feature-discovery.enabled=false
               --set tt-fabric-manager.enabled=false
               --set tt-dra-driver.enabled=false
               --set tt-telemetry.enabled=false
@@ -91,12 +92,14 @@ jobs:
           - name: dra-stack
             args: >-
               --set node-feature-discovery.enabled=false
+              --set tt-feature-discovery.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
           # Edge case: every subchart disabled.
           - name: all-off
             args: >-
               --set node-feature-discovery.enabled=false
+              --set tt-feature-discovery.enabled=false
               --set tt-k8s-driver-manager.enabled=false
               --set tt-fabric-manager.enabled=false
               --set tt-dra-driver.enabled=false
@@ -166,6 +169,8 @@ jobs:
             --set tt-k8s-driver-manager.flasher.image.tag="${S}-flasher" \
             --set tt-telemetry.image.repository=ghcr.io/example/telemetry \
             --set tt-telemetry.image.tag="${S}-telemetry" \
+            --set tt-feature-discovery.image.repository=ghcr.io/example/fd \
+            --set tt-feature-discovery.image.tag="${S}-fd" \
             > /tmp/pinned.yaml
           # Controller container image carries the override directly; the
           # builder/flasher images are forwarded as DRIVER_IMAGE / FLASHER_IMAGE
@@ -176,7 +181,8 @@ jobs:
           assert "ghcr.io/example/builder:${S}-builder"
           assert "ghcr.io/example/flasher:${S}-flasher"
           assert "ghcr.io/example/telemetry:${S}-telemetry"
-          echo "OK: umbrella forwards controller/driver/flasher/telemetry image overrides"
+          assert "ghcr.io/example/fd:${S}-fd"
+          echo "OK: umbrella forwards controller/driver/flasher/telemetry/feature-discovery image overrides"
 
   chart-lock-coherence:
     runs-on: ubuntu-latest

@@ -1,0 +1,113 @@
+suite: tt-feature-discovery DaemonSet (umbrella consumption)
+# Render contract for the tt-feature-discovery per-node DaemonSet as the
+# umbrella deploys it (pinned subchart 0.2.0): the fullnameOverride, the
+# umbrella-pinned image tag (the subchart's appVersion default points at a tag
+# the image workflow never pushes), the default TTFM controller address for
+# the fabric labels, and the feature-file path that must line up with the
+# NFD worker's features.d mount. Other subcharts are disabled to keep the
+# whole-chart render small and dodge tt-dra-driver's k8s>=1.33 floor.
+templates:
+  - charts/tt-feature-discovery/templates/daemonset.yaml
+release:
+  name: tt-operator
+  namespace: tt-operator-system
+set:
+  node-feature-discovery.enabled: false
+  tt-k8s-driver-manager.enabled: false
+  tt-fabric-manager.enabled: false
+  tt-dra-driver.enabled: false
+  tt-telemetry.enabled: false
+  jobset.enabled: false
+  kubepmix.enabled: false
+tests:
+  - it: renders one DaemonSet without the release prefix
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: DaemonSet
+      - equal:
+          path: metadata.name
+          value: tt-feature-discovery
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: tt-feature-discovery
+
+  - it: uses the umbrella-pinned image tag and forwards an override
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/tenstorrent/tt-feature-discovery:v0.2.0
+  - it: image repository/tag override is forwarded
+    set:
+      tt-feature-discovery.image.repository: ghcr.io/acme/fd
+      tt-feature-discovery.image.tag: contract-test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/acme/fd:contract-test
+
+  - it: points the fabric labels at the in-cluster TTFM controller by default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --fabric-manager-address=tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --fabric-cache-ttl=5m
+  - it: clearing the address drops every fabric-manager arg
+    set:
+      tt-feature-discovery.fabricManager.address: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --fabric-cache-ttl=5m
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --fabric-max-stale=30m
+
+  - it: writes the feature file where the NFD worker reads it
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --feature-file=/etc/kubernetes/node-feature-discovery/features.d/tt-fd
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: nfd-features
+            hostPath:
+              path: /etc/kubernetes/node-feature-discovery/features.d
+              type: DirectoryOrCreate
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: host-sys
+            hostPath:
+              path: /sys
+              type: Directory
+
+  - it: reaches tainted nodes, runs node-critical, and needs no API access
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            operator: Exists
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: system-node-critical
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.hostNetwork
+          value: false
+
+  - it: forwards imagePullSecrets onto the pod
+    set:
+      tt-feature-discovery.imagePullSecrets:
+        - name: tt-operator-image-pulltoken
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: tt-operator-image-pulltoken

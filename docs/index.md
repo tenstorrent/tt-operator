@@ -41,6 +41,7 @@ support
 | Component | Capability | Status |
 |---|---|---|
 | Node Feature Discovery | Labels nodes that have Tenstorrent devices | Supported |
+| Feature Discovery | Labels nodes with their Tenstorrent hardware (`tenstorrent.com/*`) | Supported |
 | Driver Manager | Installs, upgrades, and scopes `tt-kmd` via policy resources | Supported |
 | Firmware | Flashes device firmware via a policy resource | Supported |
 | Telemetry | Exposes a Prometheus `/metrics` endpoint | Supported |

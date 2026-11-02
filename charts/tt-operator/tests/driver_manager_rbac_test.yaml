@@ -22,6 +22,7 @@ release:
   namespace: tt-operator-system
 set:
   node-feature-discovery.enabled: false
+  tt-feature-discovery.enabled: false
   tt-fabric-manager.enabled: false
   tt-dra-driver.enabled: false
   tt-telemetry.enabled: false

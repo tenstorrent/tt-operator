@@ -57,6 +57,9 @@ runs:
                 value: "${POD_HTTPS_PROXY}"
               - name: NO_PROXY
                 value: "${NO_PROXY:-${no_proxy:-}}"
+        tt-feature-discovery:
+          imagePullSecrets:
+            - name: ${SECRET}
         tt-fabric-manager:
           imagePullSecrets:
             - name: ${SECRET}

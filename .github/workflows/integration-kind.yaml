@@ -65,6 +65,7 @@ jobs:
           create-namespace: "true"
           extra-args: >-
             --set node-feature-discovery.enabled=false
+            --set tt-feature-discovery.enabled=false
             --set kubepmix.enabled=false
             --set tt-fabric-manager.enabled=false
             --set tt-dra-driver.enabled=false
@@ -194,6 +195,7 @@ jobs:
             cert-manager: "false"
             set-args: >-
               --set node-feature-discovery.enabled=false
+              --set tt-feature-discovery.enabled=false
               --set tt-k8s-driver-manager.enabled=false
               --set tt-fabric-manager.enabled=false
               --set tt-dra-driver.enabled=false
@@ -201,17 +203,18 @@ jobs:
               --set jobset.enabled=false
               --set kubepmix.enabled=false
             present: ""
-            absent: "nfd driver-manager fabric-manager dra telemetry jobset kubepmix"
+            absent: "nfd feature-discovery driver-manager fabric-manager dra telemetry jobset kubepmix"
           - name: driver-only
             cert-manager: "false"
             set-args: >-
+              --set tt-feature-discovery.enabled=false
               --set tt-fabric-manager.enabled=false
               --set tt-dra-driver.enabled=false
               --set tt-telemetry.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
             present: "nfd driver-manager"
-            absent: "fabric-manager dra telemetry jobset kubepmix"
+            absent: "feature-discovery fabric-manager dra telemetry jobset kubepmix"
             crd-present: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
           - name: telemetry-only
             cert-manager: "false"
@@ -220,6 +223,7 @@ jobs:
             # as the RKE2 install does (rke2-install-values).
             set-args: >-
               --set node-feature-discovery.enabled=false
+              --set tt-feature-discovery.enabled=false
               --set tt-k8s-driver-manager.enabled=false
               --set tt-fabric-manager.enabled=false
               --set tt-dra-driver.enabled=false
@@ -227,16 +231,17 @@ jobs:
               --set kubepmix.enabled=false
               --set tt-telemetry.podMonitor.enabled=false
             present: "telemetry"
-            absent: "nfd driver-manager fabric-manager dra jobset kubepmix"
+            absent: "nfd feature-discovery driver-manager fabric-manager dra jobset kubepmix"
           - name: dra-stack
             cert-manager: "false"
             set-args: >-
               --set node-feature-discovery.enabled=false
+              --set tt-feature-discovery.enabled=false
               --set jobset.enabled=false
               --set kubepmix.enabled=false
               --set tt-telemetry.podMonitor.enabled=false
             present: "driver-manager fabric-manager dra telemetry"
-            absent: "nfd jobset kubepmix"
+            absent: "nfd feature-discovery jobset kubepmix"
           - name: all-on
             cert-manager: "true"
             # Everything enabled; only the prometheus-operator-dependent
@@ -244,7 +249,7 @@ jobs:
             # as the RKE2 all-on install.
             set-args: >-
               --set tt-telemetry.podMonitor.enabled=false
-            present: "nfd driver-manager fabric-manager dra telemetry jobset kubepmix"
+            present: "nfd feature-discovery driver-manager fabric-manager dra telemetry jobset kubepmix"
             absent: ""
           - name: preinstalled-driver
             cert-manager: "false"
@@ -255,7 +260,7 @@ jobs:
               --set jobset.enabled=false
               --set kubepmix.enabled=false
               --set tt-telemetry.podMonitor.enabled=false
-            present: "nfd telemetry"
+            present: "nfd feature-discovery telemetry"
             absent: "driver-manager fabric-manager dra jobset kubepmix"
             crd-absent: "tenstorrentdriverpolicies.driver.tenstorrent.com tenstorrentfirmwarepolicies.firmware.tenstorrent.com"
     steps:
