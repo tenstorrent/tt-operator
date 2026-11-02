@@ -6,6 +6,7 @@ page; follow a component to get started.
 | Component | Status |
 |---|---|
 | [Node Feature Discovery](node-feature-discovery.md) | Supported |
+| [Feature Discovery](feature-discovery.md) | Supported |
 | [Driver Manager](https://docs.tenstorrent.com/tt-k8s-driver-manager/) | Supported |
 | [Firmware](https://docs.tenstorrent.com/tt-k8s-driver-manager/latest/firmware.html) | Supported |
 | [Telemetry](https://docs.tenstorrent.com/tt-telemetry/) | Supported |

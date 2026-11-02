@@ -10,6 +10,7 @@ up device plugins.
 | Component | Role |
 |---|---|
 | **Node Feature Discovery** | Labels nodes that have a Tenstorrent device. |
+| **Feature Discovery** | Labels nodes with what hardware they have: accelerator family, product, count, and fabric placement. |
 | **Driver Manager** | Installs, upgrades, and scopes the `tt-kmd` driver, and flashes firmware. |
 | **Telemetry** | Exposes device health on a Prometheus endpoint. |
 | **Fabric Manager** | Resolves fabric topology across devices and hosts. |
@@ -23,19 +24,23 @@ Each component can be enabled or disabled independently. See
 
 ```{mermaid}
 flowchart TD
-    NFD[Node Feature Discovery] -->|labels nodes| DM[Driver Manager]
+    FD[Feature Discovery] -->|feature file| NFD[Node Feature Discovery]
+    NFD -->|labels nodes| DM[Driver Manager]
     NFD -->|labels nodes| TEL[Telemetry]
     DM -->|installs tt-kmd, flashes firmware| DEV[(Tenstorrent device)]
     TEL -->|/metrics| PROM[Prometheus]
     FM[Fabric Manager] -->|topology| DRA[DRA Driver]
+    FM -->|placement| FD
     FM -->|topology| TEL
     DRA -->|schedulable devices| WL[Workloads]
     DEV --- TEL
     DEV --- DRA
 ```
 
-Node Feature Discovery labels the nodes. The Driver Manager brings up `tt-kmd`
-and firmware on those nodes. Telemetry reports device health.
+Node Feature Discovery labels the nodes. Feature Discovery describes the
+hardware on each of them as `tenstorrent.com/*` labels, published through Node
+Feature Discovery. The Driver Manager brings up `tt-kmd` and firmware on those
+nodes. Telemetry reports device health.
 
 The remaining components extend this. The Fabric Manager resolves topology that
 the DRA Driver and Telemetry consume, and the DRA Driver makes devices available

@@ -4,10 +4,11 @@
 name: Verify install landed
 description: |
   Post-install health on real hardware: the controller Deployments reach
-  Available, NFD finds the Tenstorrent PCI device and labels the node, and no
-  pod is wedged on a missing image. Runs before the driver is (re)installed —
-  the driver-manager DS pod may not be Ready yet (no kmd), which is fine; we
-  only police image pulls here.
+  Available, NFD finds the Tenstorrent PCI device and labels the node,
+  tt-feature-discovery's tenstorrent.com/* labels land through NFD's local
+  source, and no pod is wedged on a missing image. Runs before the driver is
+  (re)installed — the driver-manager DS pod may not be Ready yet (no kmd),
+  which is fine; we only police image pulls here.
 
 inputs:
   namespace:
@@ -41,6 +42,25 @@ runs:
         done
         kubectl get nodes --show-labels
         [ "$n" -gt 0 ] || { echo "FAIL: NFD didn't label any node"; exit 1; }
+
+    - name: tt-feature-discovery labeled the node
+      # Needs no driver: the DaemonSet reads PCI sysfs and writes an NFD
+      # feature file, so the tenstorrent.com/* labels should land as soon as
+      # the NFD worker's next pass picks the file up.
+      shell: bash
+      run: |
+        set -ex
+        NS='${{ inputs.namespace }}'
+        kubectl -n "$NS" rollout status ds/tt-feature-discovery --timeout=3m
+        n=0
+        for _ in $(seq 1 36); do
+          n=$(kubectl get nodes -l tenstorrent.com/device.present=true -o name | wc -l)
+          [ "$n" -gt 0 ] && break
+          sleep 5
+        done
+        kubectl get nodes -o json | jq -r \
+          '.items[] | .metadata.name + ": " + (.metadata.labels | to_entries | map(select(.key | startswith("tenstorrent.com/"))) | map(.key + "=" + .value) | join(" "))'
+        [ "$n" -gt 0 ] || { echo "FAIL: tt-feature-discovery didn't label any node"; exit 1; }
 
     - name: No ImagePullBackOff
       shell: bash

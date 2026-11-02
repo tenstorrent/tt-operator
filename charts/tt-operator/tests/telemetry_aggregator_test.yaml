@@ -12,6 +12,7 @@ release:
   namespace: tt-operator-system
 set:
   node-feature-discovery.enabled: false
+  tt-feature-discovery.enabled: false
   tt-k8s-driver-manager.enabled: false
   tt-fabric-manager.enabled: false
   tt-dra-driver.enabled: false

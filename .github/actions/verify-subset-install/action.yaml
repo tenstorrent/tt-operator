@@ -26,7 +26,7 @@ inputs:
     description: 'Permutation flags, e.g. "--set jobset.enabled=false". Word-split, so values must be bracket/space-free.'
     default: ''
   expect-present:
-    description: 'Space-separated component keys expected present (nfd driver-manager fabric-manager dra telemetry jobset kubepmix).'
+    description: 'Space-separated component keys expected present (nfd feature-discovery driver-manager fabric-manager dra telemetry jobset kubepmix).'
     default: ''
   expect-absent:
     description: 'Space-separated component keys expected absent.'
@@ -55,6 +55,7 @@ runs:
         # Map component key -> name substring used to detect its workloads.
         declare -A PAT=(
           [nfd]='node-feature-discovery'
+          [feature-discovery]='tt-feature-discovery'
           [driver-manager]='tt-k8s-driver-manager'
           [fabric-manager]='tt-fabric-manager'
           [dra]='tt-dra-driver'

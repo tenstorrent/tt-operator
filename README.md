@@ -10,6 +10,10 @@ one Helm release. It installs:
 - **[node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery)** (NFD):
   stamps `feature.node.kubernetes.io/pci-1200_1e52.present=true` on
   every node that has a Tenstorrent PCI device.
+- **[tt-feature-discovery](https://github.com/tenstorrent/tt-feature-discovery)**:
+  publishes `tenstorrent.com/*` node labels describing the hardware on each
+  node (accelerator family, product, and count; fabric placement through
+  `tt-fabric-manager`) via NFD's local feature-file source.
 - **[tt-k8s-driver-manager](https://github.com/tenstorrent/tt-k8s-driver-manager)**:
   controllers, custom resource definitions (CRDs), and images that own the
   lifecycle of the `tt-kmd` kernel module, device firmware, and `tt-smi` on

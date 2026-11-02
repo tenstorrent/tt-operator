@@ -44,8 +44,9 @@ helm install tt-operator oci://ghcr.io/tenstorrent/helm/tt-operator \
   --set kubepmix.enabled=false
 ```
 
-The component keys are `node-feature-discovery`, `tt-k8s-driver-manager`,
-`tt-fabric-manager`, `tt-dra-driver`, `tt-telemetry`, `jobset`, and `kubepmix`.
+The component keys are `node-feature-discovery`, `tt-feature-discovery`,
+`tt-k8s-driver-manager`, `tt-fabric-manager`, `tt-dra-driver`, `tt-telemetry`,
+`jobset`, and `kubepmix`.
 
 ### Use pre-installed drivers
 

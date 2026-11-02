@@ -3,7 +3,10 @@
 
 # tt-operator is an umbrella chart. It installs:
 #   - node-feature-discovery (so Tenstorrent nodes get the
-#     feature.node.kubernetes.io/pci-1200_1e52.present label)
+#     feature.node.kubernetes.io/pci-1200_1e52.present label, and so the
+#     tt-feature-discovery feature file becomes node labels)
+#   - tt-feature-discovery (tenstorrent.com/* node labels describing the
+#     hardware — see github.com/tenstorrent/tt-feature-discovery)
 #   - tt-k8s-driver-manager (controllers + CRDs + images for tt-kmd, firmware,
 #     and tt-smi lifecycle — see github.com/tenstorrent/tt-k8s-driver-manager)
 #   - tt-fabric-manager (cluster fabric/interconnect manager — see
@@ -28,17 +31,19 @@
 node-feature-discovery:
   # -- (bool) Install node-feature-discovery so Tenstorrent nodes get the feature.node.kubernetes.io/pci-1200_1e52.present label.
   enabled: true
-  # Restrict NFD to the PCI source only. All we need is the
-  # pci-<class>_<vendor>.present label for Tenstorrent devices — running
-  # the full set (cpu, memory, kernel, system, storage, network, usb, custom)
-  # costs CPU/memory on every node and clutters node labels.
+  # Restrict NFD to two sources: `pci` gives the pci-<class>_<vendor>.present
+  # label for Tenstorrent devices, and `local` turns the feature file
+  # tt-feature-discovery writes under features.d into tenstorrent.com/*
+  # labels. Running the full set (cpu, memory, kernel, system, storage,
+  # network, usb, custom) costs CPU/memory on every node and clutters node
+  # labels.
   worker:
     config:
       core:
-        # -- (list) NFD feature sources to enable. Restricted to PCI — the only source needed to detect Tenstorrent devices.
-        featureSources: ["pci"]
-        # -- (list) NFD label sources to enable. Restricted to PCI to avoid the CPU/memory cost and label clutter of the full source set.
-        labelSources: ["pci"]
+        # -- (list) NFD feature sources to enable. `pci` detects Tenstorrent devices; `local` reads the feature file tt-feature-discovery writes.
+        featureSources: ["pci", "local"]
+        # -- (list) NFD label sources to enable. Same two sources, avoiding the CPU/memory cost and label clutter of the full source set.
+        labelSources: ["pci", "local"]
     # NFD worker must reach every node — including ones tainted for team
     # / tenant isolation — or the `pci-1200_1e52.present` label never
     # lands and the firmware / driver policy controllers never match.
@@ -47,6 +52,37 @@ node-feature-discovery:
     # -- (list) Tolerations for the NFD worker DaemonSet. Defaults to universal so the PCI label reaches tainted node pools.
     tolerations:
       - operator: Exists
+
+# tt-feature-discovery publishes tenstorrent.com/* node labels: accelerator
+# family, board product and device count from PCI sysfs, plus ASIC and
+# datacenter-location labels from tt-fabric-manager. It writes an NFD
+# feature file on each node and never talks to the API server, so it needs
+# node-feature-discovery above with the `local` source enabled. Fabric
+# labels are best-effort: with tt-fabric-manager disabled or unreachable
+# the PCI-derived labels still publish.
+tt-feature-discovery:
+  # -- (bool) Install tt-feature-discovery (tenstorrent.com/* node labels via NFD's local feature-file source). Needs node-feature-discovery with the `local` source enabled.
+  enabled: true
+  # -- (string) Drop the release prefix so the DaemonSet renders as tt-feature-discovery.
+  fullnameOverride: tt-feature-discovery
+
+  # The subchart's image tag defaults to its appVersion, which upstream
+  # stamps without the `v` its image tags carry (chart 0.2.0 -> image
+  # v0.2.0), so the subchart default points at a tag that doesn't exist.
+  # Pin it here; keep it in lockstep with the subchart version in Chart.yaml.
+  image:
+    # renovate: datasource=docker depName=ghcr.io/tenstorrent/tt-feature-discovery
+    # -- (string) tt-feature-discovery image tag. Keep in lockstep with the tt-feature-discovery subchart version in Chart.yaml.
+    tag: "v0.2.0"
+
+  # Point at the in-cluster TTFM controller Service for the fabric-derived
+  # labels (asic.*, datacenter.*, fabric.*). Unlike tt-telemetry, an
+  # unreachable fabric manager is non-fatal here — the PCI labels keep
+  # publishing — so a default is safe. Clear it if tt-fabric-manager is
+  # disabled to stop the periodic query failing.
+  fabricManager:
+    # -- (string) tt-fabric-manager controller gRPC address used for the fabric-derived labels. Set to "" when tt-fabric-manager is disabled.
+    address: tt-fabric-manager-controller.tt-operator-system.svc.cluster.local:50052
 
 # tt-k8s-driver-manager owns the controllers, CRDs, and per-node images that
 # manage tt-kmd installation, firmware flashing, and tt-smi userspace.

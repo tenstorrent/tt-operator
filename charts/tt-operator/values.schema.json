@@ -10,6 +10,26 @@
         "enabled": { "type": "boolean" }
       }
     },
+    "tt-feature-discovery": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fullnameOverride": { "type": "string" },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          }
+        },
+        "fabricManager": {
+          "type": "object",
+          "properties": {
+            "address": { "type": "string" }
+          }
+        }
+      }
+    },
     "tt-k8s-driver-manager": {
       "type": "object",
       "properties": {

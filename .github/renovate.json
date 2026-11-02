@@ -37,6 +37,7 @@
         "/^tt-fabric-manager$/",
         "/^tt-dra-driver$/",
         "/^tt-telemetry$/",
+        "/^tt-feature-discovery$/",
         "/^tt-k8s-driver-manager$/"
       ]
     },
@@ -51,6 +52,18 @@
       "matchDatasources": ["helm"],
       "groupName": "tt-telemetry",
       "groupSlug": "tt-telemetry"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/tenstorrent/tt-feature-discovery"],
+      "matchDatasources": ["docker"],
+      "groupName": "tt-feature-discovery",
+      "groupSlug": "tt-feature-discovery"
+    },
+    {
+      "matchPackageNames": ["tt-feature-discovery"],
+      "matchDatasources": ["helm"],
+      "groupName": "tt-feature-discovery",
+      "groupSlug": "tt-feature-discovery"
     }
   ],
   "postUpgradeTasks": {
