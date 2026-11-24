@@ -11,20 +11,23 @@ name: renovate
 # .github/renovate.json.
 #
 # Auth:
-#   Uses the classic PAT stored as repo secret TT_OPERATOR_RENOVATE_PAT
-#   (scopes: `repo` + `read:packages`). PRs will attribute to the token
-#   owner.
-#
-# TODO(kluong): swap the PAT for a scoped GitHub App
-#   (`tt-renovate` at the tenstorrent org level) once the mechanism is
-#   proven. Cleaner attribution, no personal token lifecycle to manage,
-#   and the App can be scoped to just the umbrella + downstream chart
-#   repos. Swap = replace TT_OPERATOR_RENOVATE_PAT with
-#   actions/create-github-app-token wiring; nothing else changes.
+#   No stored token. The job gets a short-lived GitHub token from OSPO
+#   through the shared action tenstorrent/.github/actions/vault-secrets
+#   (role `renovate`, token `renovate-pr`). It works only for this file, on
+#   main, in the environment `renovate`. In this repository only, the token
+#   can push, force-push or delete any branch except main (Renovate uses
+#   renovate/* branches in practice), create, move or delete tags not named
+#   v*, open, update and approve pull requests, and edit issues (the
+#   Dependency Dashboard). It cannot change files under
+#   .github/workflows/, so the github-actions manager is off in
+#   .github/renovate.json. The job revokes the token at its end. PRs show
+#   the OSPO token App as their author.
+#   ghcr.io lookups (private chart / image tags) use the job's built-in
+#   token (`packages: read`).
 #
 # First run:
-#   Kick via the Actions tab (workflow_dispatch) to verify. Cron takes
-#   over after that.
+#   Start it by hand on main via the Actions tab (workflow_dispatch) to
+#   verify. Cron takes over after that.
 
 on:
   schedule:
@@ -48,28 +51,68 @@ concurrency:
 jobs:
   renovate:
     runs-on: ubuntu-latest
+    # The OSPO token role is bound to main AND this environment (branch
+    # rule: main only).
+    environment: renovate
+    permissions:
+      contents: read
+      id-token: write   # OIDC login for the short-lived token
+      packages: read    # ghcr.io lookups with the built-in token
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
+      # This job can ask for an OIDC token, so the archive is checked with
+      # SHA-256 before it is unpacked, and the binary is never run on the
+      # runner. Only Renovate runs it, inside its container.
       - name: Install helm-docs
+        env:
+          # A version bump of HELM_DOCS_VERSION in hack/tool-versions.env
+          # must change these two values too. The SHA-256 is the line for
+          # helm-docs_<version>_Linux_x86_64.tar.gz in checksums.txt of the
+          # helm-docs release. Renovate does not change them.
+          HELM_DOCS_PINNED: "1.14.2"
+          HELM_DOCS_SHA256: "a8cf72ada34fad93285ba2a452b38bdc5bd52cc9a571236244ec31022928d6cc"
         run: |
           set -euo pipefail
           # shellcheck disable=SC1091
           source hack/tool-versions.env
           v="${HELM_DOCS_VERSION#v}"
+          if [ "$v" != "$HELM_DOCS_PINNED" ]; then
+            echo "::error::hack/tool-versions.env has helm-docs $v, but this step has the SHA-256 of $HELM_DOCS_PINNED. Change HELM_DOCS_PINNED and HELM_DOCS_SHA256 in this step (from checksums.txt of the helm-docs release)."
+            exit 1
+          fi
+          f="helm-docs_${v}_Linux_x86_64.tar.gz"
+          curl -fsSL -o "/tmp/${f}" "https://github.com/norwoodj/helm-docs/releases/download/v${v}/${f}"
+          echo "${HELM_DOCS_SHA256}  /tmp/${f}" | sha256sum -c -
           # Extract to /tmp, not /usr/local/bin: post-upgrade commands run
           # inside the Renovate container, which only shares /tmp with the
           # runner (renovatebot/github-action `docker-volumes` default).
-          curl -sSL "https://github.com/norwoodj/helm-docs/releases/download/v${v}/helm-docs_${v}_Linux_x86_64.tar.gz" \
-            | tar -xz -C /tmp helm-docs
+          tar -xzf "/tmp/${f}" -C /tmp helm-docs
+          rm -f "/tmp/${f}"
           chmod 0755 /tmp/helm-docs
-          /tmp/helm-docs --version
+          test -x /tmp/helm-docs
+
+      - name: Get short-lived GitHub token
+        id: vault
+        uses: tenstorrent/.github/actions/vault-secrets@8909e7247ace56b203bb0db68cc9dc8fd095c6bc # vault-secrets-v1.1.0
+        with:
+          role: renovate
+          github-token: renovate-pr
+
+      # Renovate runs third-party code (the Renovate image, helm-docs). It
+      # needs no OSPO access, so the runner leaves the private network first.
+      - name: Leave the tailnet
+        if: always()
+        run: |
+          sudo tailscale logout || { echo "::warning::tailscale logout failed; taking the interface down"; sudo tailscale down || true; }
 
       - name: Renovate
-        uses: renovatebot/github-action@v40.3.6
+        uses: renovatebot/github-action@0984fb80fc633b17e57f3e8b6c007fe0dc3e0d62 # v40.3.6
         with:
           configurationFile: .github/renovate.json
-          token: ${{ secrets.TT_OPERATOR_RENOVATE_PAT }}
+          token: ${{ steps.vault.outputs.token }}
           # Explicit, though it is the action default: post-upgrade commands
           # resolve /tmp/helm-docs through this share.
           docker-volumes: /tmp:/tmp
@@ -80,7 +123,24 @@ jobs:
           # malicious PR can't smuggle a new command through the config.
           RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: >-
             ["^/tmp/helm-docs --chart-search-root=charts$"]
-          # Same token authenticates against ghcr.io for private chart /
-          # image tag enumeration (needs the `read:packages` scope).
+          # The job's built-in token authenticates against ghcr.io for
+          # private chart / image tag enumeration (job permission
+          # `packages: read`).
           RENOVATE_HOST_RULES: >-
-            [{"matchHost":"ghcr.io","hostType":"docker","username":"renovate","password":"${{ secrets.TT_OPERATOR_RENOVATE_PAT }}"}]
+            [{"matchHost":"ghcr.io","hostType":"docker","username":"renovate","password":"${{ github.token }}"}]
+
+      # Runs also when Renovate failed, so the token does not stay valid
+      # until it expires.
+      - name: Revoke the short-lived token
+        if: always() && steps.vault.outcome == 'success'
+        env:
+          APP_TOKEN: ${{ steps.vault.outputs.token }}
+        run: |
+          if [ -n "${APP_TOKEN:-}" ]; then
+            curl -sS -o /dev/null -w 'revoke: HTTP %{http_code}\n' -X DELETE \
+              -H "Authorization: Bearer ${APP_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/installation/token
+          else
+            echo "no token to revoke"
+          fi
