@@ -13,11 +13,9 @@ name: static-checks
 #                          with kubeconform against the k8s + CRD schemas.
 #   - chart-lock-coherence: Chart.lock stays in sync with Chart.yaml.
 #
-# AUTH NOTE: jobs that build chart deps pull the tt-k8s-driver-manager OCI
-# subchart, which tt-operator's GITHUB_TOKEN can't read cross-repo yet — they
-# authenticate with the GHCR_PULL_PAT secret via the helm-deps composite
-# action. See the helm-deps action for the canonical AUTH NOTE. TODO: drop the
-# PAT once cross-repo package access is granted.
+# AUTH NOTE: jobs that build chart deps pull OCI subcharts from GHCR. They
+# authenticate with GITHUB_TOKEN via the helm-deps composite action. See the
+# helm-deps action for the canonical AUTH NOTE.
 
 on:
   push:
@@ -61,7 +59,7 @@ jobs:
       - name: Build chart deps
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
       - name: helm lint --strict (also validates values.schema.json)
         # --kube-version pins the capabilities lint renders with. Without it
         # lint uses whatever the installed Helm defaults to (v1.20.0 on Helm 3,
@@ -112,7 +110,7 @@ jobs:
       - name: Build chart deps
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install kubeconform
         run: |
@@ -153,7 +151,7 @@ jobs:
       - name: Build chart deps
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
       - name: Umbrella forwards per-subchart image overrides
         run: |
           set -euo pipefail
@@ -192,7 +190,7 @@ jobs:
       - name: Build chart deps
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
       - name: Chart.lock is in sync with Chart.yaml
         # helm-deps already ran `helm dependency build`, which hard-errors if
         # Chart.lock is out of sync with Chart.yaml. This asserts the build
@@ -217,7 +215,7 @@ jobs:
       - name: Build chart deps
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install helm-unittest plugin
         # --verify=false: recent Helm attempts plugin provenance verification by
         # default, which the helm-unittest git source doesn't provide.

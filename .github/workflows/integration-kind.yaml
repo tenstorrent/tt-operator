@@ -21,9 +21,8 @@ name: integration-kind
 # readiness, so operand pods are free to ImagePullBackOff (images not
 # side-loaded); they build on the kind-cluster composite.
 #
-# AUTH NOTE: pulls the tt-k8s-driver-manager OCI subchart + images with the
-# GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read). See the
-# helm-deps action for the canonical note. TODO: drop once access is granted.
+# AUTH NOTE: pulls the OCI subcharts + images from GHCR with GITHUB_TOKEN.
+# See the helm-deps action for the canonical note.
 
 on:
   push:
@@ -52,7 +51,7 @@ jobs:
         uses: ./.github/actions/kind-bootstrap
         with:
           cluster-name: tt-integration
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install umbrella (driver manager only)
         # Cluster-agnostic install action (shared with integration-rke2.yaml).
@@ -271,7 +270,7 @@ jobs:
         with:
           cluster-name: subset-${{ matrix.name }}
           node-image: kindest/node:v1.34.0
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
           install-cert-manager: ${{ matrix.cert-manager }}
       - name: Install permutation + assert operands
         uses: ./.github/actions/verify-subset-install
@@ -305,7 +304,7 @@ jobs:
         with:
           cluster-name: cm-prereq
           node-image: kindest/node:v1.34.0
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
           install-cert-manager: "false"
       - name: kubepmix cert-manager prerequisite (negative + positive)
         uses: ./.github/actions/verify-cert-manager-prereq
@@ -330,7 +329,7 @@ jobs:
         with:
           cluster-name: oci-install
           node-image: kindest/node:v1.34.0
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
           build-deps: "false"
           install-cert-manager: "false"
       - name: Install from the OCI-published chart

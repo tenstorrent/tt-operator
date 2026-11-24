@@ -17,9 +17,8 @@ name: integration-rke2
 # Modular by design: each phase is a composite action under .github/actions/,
 # so adding a check is a new composite + one `uses:` line below.
 #
-# AUTH NOTE: the tt-k8s-driver-manager OCI subchart + private images are pulled
-# with the GHCR_PULL_PAT secret (GITHUB_TOKEN lacks cross-repo package read).
-# See the helm-deps action for the canonical note. TODO: drop once granted.
+# AUTH NOTE: the OCI subcharts + private images are pulled from GHCR with
+# GITHUB_TOKEN. See the helm-deps action for the canonical note.
 
 on:
   push:
@@ -72,12 +71,12 @@ jobs:
       - name: Build chart deps (GHCR login + helm dep build)
         uses: ./.github/actions/helm-deps
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Stage namespace + GHCR pull secret
         uses: ./.github/actions/ghcr-pull-secret
         with:
-          ghcr-password: ${{ secrets.GHCR_PULL_PAT }}
+          ghcr-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate install values (proxy + pull secrets)
         id: vals
