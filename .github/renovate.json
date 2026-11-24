@@ -10,6 +10,9 @@
   "schedule": ["before 9am"],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 4,
+  "github-actions": {
+    "enabled": false
+  },
   "helmv3": {
     "managerFilePatterns": [
       "/^charts/tt-operator/Chart\\.yaml$/"
