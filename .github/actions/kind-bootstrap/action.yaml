@@ -13,21 +13,18 @@ description: |
   Assumes the caller has already run actions/checkout and azure/setup-helm
   (the composite's helm steps need the binary on PATH).
 
-  AUTH NOTE (temporary): tt-operator's GITHUB_TOKEN lacks cross-repo read on
-  the tt-k8s-driver-manager GHCR packages, so pulls authenticate with a
-  personal PAT (the GHCR_PULL_PAT repo secret, passed in as `ghcr-password`).
-  See the helm-deps action for the canonical note. TODO: drop this once
-  cross-repo package access is granted and revert to secrets.GITHUB_TOKEN.
+  AUTH NOTE: GHCR pulls use the workflow's GITHUB_TOKEN (passed in as
+  `ghcr-password`). See the helm-deps action for the canonical note.
 
 inputs:
   cluster-name:
     description: 'Name of the kind cluster to create.'
     default: 'tt-smoke'
   ghcr-username:
-    description: 'GHCR username for the PAT used to pull subchart images.'
-    default: 'kluongTT'
+    description: 'GHCR username. Empty uses github.actor.'
+    default: ''
   ghcr-password:
-    description: 'GHCR token (GHCR_PULL_PAT) with read:packages, SSO-authorized to tenstorrent.'
+    description: 'GHCR token with packages read (pass secrets.GITHUB_TOKEN).'
     required: true
 
 runs:
@@ -42,20 +39,23 @@ runs:
         # tree at /lib/modules/<kver>/build) — that's expected; we only
         # verify it gets PAST image pull.
 
-    # See AUTH NOTE above — both docker and helm pulls use the PAT until
-    # cross-repo OCI access is granted.
+    # See AUTH NOTE above — both docker and helm pulls use the token passed
+    # in as ghcr-password (the workflow's GITHUB_TOKEN).
     - name: Docker login GHCR (for kind image side-load)
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ inputs.ghcr-username }}
+        username: ${{ inputs.ghcr-username || github.actor }}
         password: ${{ inputs.ghcr-password }}
 
     - name: Helm registry login (for OCI subchart pull)
       shell: bash
+      env:
+        GHCR_USERNAME: ${{ inputs.ghcr-username || github.actor }}
+        GHCR_PASSWORD: ${{ inputs.ghcr-password }}
       run: |
-        echo "${{ inputs.ghcr-password }}" | \
-          helm registry login ghcr.io --username "${{ inputs.ghcr-username }}" --password-stdin
+        echo "$GHCR_PASSWORD" | \
+          helm registry login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 
     - name: Pre-pull tt-k8s-driver-manager images + load into kind
       shell: bash

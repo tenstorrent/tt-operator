@@ -17,16 +17,19 @@ inputs:
     description: Name of the docker-registry secret.
     default: tt-operator-image-pulltoken
   ghcr-username:
-    description: GHCR username for the PAT.
-    default: kluongTT
+    description: 'GHCR username. Empty uses github.actor.'
+    default: ''
   ghcr-password:
-    description: GHCR token (GHCR_PULL_PAT) with read:packages.
+    description: 'GHCR token with packages read (pass secrets.GITHUB_TOKEN).'
     required: true
 
 runs:
   using: composite
   steps:
     - shell: bash
+      env:
+        GHCR_USERNAME: ${{ inputs.ghcr-username || github.actor }}
+        GHCR_PASSWORD: ${{ inputs.ghcr-password }}
       run: |
         set -eu
         kubectl create namespace "${{ inputs.namespace }}" \
@@ -34,6 +37,6 @@ runs:
         kubectl create secret docker-registry "${{ inputs.secret-name }}" \
           -n "${{ inputs.namespace }}" \
           --docker-server=ghcr.io \
-          --docker-username="${{ inputs.ghcr-username }}" \
-          --docker-password="${{ inputs.ghcr-password }}" \
+          --docker-username="$GHCR_USERNAME" \
+          --docker-password="$GHCR_PASSWORD" \
           --dry-run=client -o yaml | kubectl apply -f -

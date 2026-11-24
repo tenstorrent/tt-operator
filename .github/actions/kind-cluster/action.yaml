@@ -19,9 +19,8 @@ description: |
 
   Assumes the caller already ran actions/checkout and azure/setup-helm.
 
-  AUTH NOTE: GHCR pulls use the GHCR_PULL_PAT secret (passed as ghcr-password)
-  because tt-operator's GITHUB_TOKEN lacks cross-repo package read. See the
-  helm-deps action for the canonical note. TODO: drop once access is granted.
+  AUTH NOTE: GHCR pulls use the workflow's GITHUB_TOKEN (passed as
+  ghcr-password). See the helm-deps action for the canonical note.
 
 inputs:
   cluster-name:
@@ -31,10 +30,10 @@ inputs:
     description: 'Optional kindest/node image (e.g. kindest/node:v1.34.0). Empty uses the kind-action default.'
     default: ''
   ghcr-username:
-    description: 'GHCR username for the PAT used to pull subcharts/images.'
-    default: 'kluongTT'
+    description: 'GHCR username. Empty uses github.actor.'
+    default: ''
   ghcr-password:
-    description: 'GHCR token (GHCR_PULL_PAT) with read:packages, SSO-authorized to tenstorrent.'
+    description: 'GHCR token with packages read (pass secrets.GITHUB_TOKEN).'
     required: true
   build-deps:
     description: 'Run `helm dependency build` ("true"/"false"). Set false for the self-contained OCI-published chart.'
@@ -57,9 +56,12 @@ runs:
 
     - name: Helm registry login (GHCR, for OCI pulls)
       shell: bash
+      env:
+        GHCR_USERNAME: ${{ inputs.ghcr-username || github.actor }}
+        GHCR_PASSWORD: ${{ inputs.ghcr-password }}
       run: |
-        echo "${{ inputs.ghcr-password }}" | \
-          helm registry login ghcr.io --username "${{ inputs.ghcr-username }}" --password-stdin
+        echo "$GHCR_PASSWORD" | \
+          helm registry login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 
     - name: Fake the NFD tt-present label on every node
       shell: bash
