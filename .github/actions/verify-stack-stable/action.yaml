@@ -56,6 +56,15 @@ runs:
           echo "::error::container(s) restarted during the ${WINDOW}s stability window:"
           echo "$regressed"
           kubectl -n "$NS" get pods -o wide
+          echo ""
+          echo "=== logs from restarted containers ==="
+          while IFS= read -r line; do
+            pod_container="${line%%:*}"
+            pod="${pod_container%%/*}"
+            container="${pod_container##*/}"
+            echo "--- previous terminated logs: $pod/$container ---"
+            kubectl -n "$NS" logs "$pod" -c "$container" --previous --tail=50 2>&1 || true
+          done <<< "$regressed"
           exit 1
         fi
         echo "OK: no container restarted over ${WINDOW}s — stack is stable"
