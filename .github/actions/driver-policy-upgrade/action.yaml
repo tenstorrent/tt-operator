@@ -67,8 +67,21 @@ runs:
             sleep 10
           done
           echo "::error::timed out after ${TIMEOUT}s waiting for kmd ${target} (host=$(host_version))"
+          echo "--- DaemonSet ---"
           kubectl -n "$NS" get ds "ttdrv-${CR}" -o wide || true
+          echo "--- Pods ---"
           kubectl -n "$NS" get pods -l "driver.tenstorrent.com/cr=${CR}" -o wide || true
+          echo "--- Pod describe ---"
+          kubectl -n "$NS" describe pods -l "driver.tenstorrent.com/cr=${CR}" || true
+          echo "--- Pod logs (last 100 lines, all containers) ---"
+          for pod in $(kubectl -n "$NS" get pods -l "driver.tenstorrent.com/cr=${CR}" -o name 2>/dev/null); do
+            echo ">> $pod"
+            kubectl -n "$NS" logs --all-containers=true --tail=100 "$pod" 2>&1 || true
+            echo ">> $pod (previous, if any)"
+            kubectl -n "$NS" logs --all-containers=true --tail=100 --previous "$pod" 2>&1 || true
+          done
+          echo "--- Namespace events ---"
+          kubectl -n "$NS" get events --sort-by='.lastTimestamp' | tail -30 || true
           return 1
         }
 

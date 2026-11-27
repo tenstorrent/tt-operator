@@ -35,7 +35,7 @@ dependencies:
   # / non-Galaxy setups don't need it.
   # Documentation: https://docs.tenstorrent.com/tt-fabric-manager/
   - name: tt-fabric-manager
-    version: "0.2.30"
+    version: "0.2.31"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-fabric-manager.enabled
   # tt-dra-driver: Tenstorrent DRA (Dynamic Resource Allocation) driver.
@@ -46,7 +46,7 @@ dependencies:
   # kubelet (DRA went GA in 1.34; gated in 1.33).
   # Source: github.com/tenstorrent/tt-dra-driver
   - name: tt-dra-driver
-    version: "0.0.59"
+    version: "0.0.84"
     repository: "oci://ghcr.io/tenstorrent/helm"
     condition: tt-dra-driver.enabled
   # tt-telemetry: collects Tenstorrent device telemetry and exposes it via
